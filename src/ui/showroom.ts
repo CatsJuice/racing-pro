@@ -20,10 +20,9 @@ export class Showroom {
   constructor(opts: { interactive?: boolean } = {}) {
     createEnvironment(this.scene, { shadowSize: 12 });
     this.scene.fog = new THREE.Fog('#d8f0ff', 60, 420);
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(400, 48), toon('#8fd765'));
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(2200, 64), toon('#8fd765'));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
-    (ground.material as any).userData.outlineParameters = { visible: false };
     this.scene.add(ground);
 
     const plat = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.4, 0.25, 64), toon('#f4f4f4'));
@@ -36,7 +35,6 @@ export class Showroom {
     const stripe = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.5, 64), toon('#e63946', { side: THREE.DoubleSide }));
     stripe.rotation.x = -Math.PI / 2;
     stripe.position.y = 0.255;
-    (stripe.material as any).userData.outlineParameters = { visible: false };
     this.turntable.add(plat, ring, stripe);
     this.scene.add(this.turntable);
 
@@ -92,13 +90,11 @@ export class Showroom {
     if (this.autoRotate) this.spin += dt * 0.35;
     this.turntable.rotation.y = this.spin;
     this.controls?.update();
-    const { renderer, effect } = getStage();
-    const size = renderer.getSize(new THREE.Vector2());
-    this.camera.aspect = size.x / size.y;
+    const stage = getStage();
+    const W = window.innerWidth, H = window.innerHeight;
     this.camera.clearViewOffset();
-    if (this.offsetX) this.camera.setViewOffset(size.x, size.y, -this.offsetX * size.x, 0, size.x, size.y);
-    this.camera.updateProjectionMatrix();
-    effect.render(this.scene, this.camera);
+    if (this.offsetX) this.camera.setViewOffset(W, H, -this.offsetX * W, 0, W, H);
+    stage.render(this.scene, this.camera);
   }
 
   dispose() {

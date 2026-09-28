@@ -170,8 +170,8 @@ export class ReplayScreen implements Screen {
       sh.uniforms.uWidth = uWidth;
       sh.vertexShader = 'attribute vec2 sideOffset;\nuniform float uWidth;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.xz += sideOffset * uWidth;');
     };
-    (m.userData as any).outlineParameters = { visible: false };
     const mesh = new THREE.Mesh(g, m);
+    mesh.userData.noOutline = true;
     mesh.frustumCulled = false;
     mesh.renderOrder = 3;
     return { mesh, quads: q, width: uWidth, baseWidth: width };
@@ -228,9 +228,8 @@ export class ReplayScreen implements Screen {
     sp.scale.set(5, 1.9, 1);
     sp.position.y = 4.2;
     sp.renderOrder = 10;
-    (sp.material.userData as any).outlineParameters = { visible: false };
-    (pole.material as any).userData.outlineParameters = { visible: false };
     g.add(pole, sp);
+    pole.userData.noOutline = true;
     g.position.set(x, 0, z);
     this.markers.add(g);
   }
@@ -520,11 +519,7 @@ export class ReplayScreen implements Screen {
     this.ui.brk.style.height = `${f[F.brake] * 100}%`;
     this.drawChart(Math.max(0, f[F.s]), cmpS);
 
-    const { renderer, effect } = getStage();
-    const size = renderer.getSize(new THREE.Vector2());
-    this.camera.aspect = size.x / size.y;
-    this.camera.updateProjectionMatrix();
-    effect.render(this.scene, this.camera);
+    getStage().render(this.scene, this.camera);
   }
 
   unmount() {

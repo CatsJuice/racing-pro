@@ -84,6 +84,10 @@ export class RaceScreen implements Screen {
   private deltaHint = 0;
   private wrongWay = 0;
   private offTime = 0;
+  private brakeHeat = 0;
+  private flame = 0;
+  private lastGear = 1;
+  private lastThrottle = 0;
   // rewind
   private history: Snapshot[] = [];
   private rewindCursor = -1;
@@ -227,6 +231,7 @@ export class RaceScreen implements Screen {
     this.car.update({
       x: p.x, z: p.z, heading: p.heading, pitch: p.pitch, roll: p.roll, heave: p.heave,
       steer: p.steerAngle, wheelSpin: p.wheels.map((w) => w.spin), brake: p.brakeOut,
+      brakeHeat: this.brakeHeat, flame: this.flame,
     });
     this.updateGhost();
     this.track.update(time);
@@ -320,11 +325,7 @@ export class RaceScreen implements Screen {
   }
 
   private render() {
-    const { renderer, effect } = getStage();
-    const size = renderer.getSize(new THREE.Vector2());
-    this.camera.aspect = size.x / size.y;
-    this.camera.updateProjectionMatrix();
-    effect.render(this.scene, this.camera);
+    getStage().render(this.scene, this.camera);
   }
 
   private collide() {
@@ -567,6 +568,15 @@ export class RaceScreen implements Screen {
       }
     }
     this.smoke.update(dt);
+    // brake discs heat up with braking power and cool down with airflow
+    this.brakeHeat = Math.min(1, Math.max(0, this.brakeHeat + (p.brakeOut * p.speed * 0.012 - (0.08 + p.speed * 0.004) * this.brakeHeat) * dt * 3));
+    // exhaust pops: upshifts and lifting off at high revs
+    this.flame = Math.max(0, this.flame - dt * 6);
+    if (p.gear > this.lastGear && p.gear > 1) this.flame = 1;
+    if (this.lastThrottle > 0.8 && p.throttleOut < 0.2 && p.rpm > p.setup.redline * 0.65) this.flame = 0.8;
+    if (p.throttleOut < 0.1 && p.rpm > p.setup.redline * 0.6 && Math.random() < dt * 4) this.flame = Math.max(this.flame, 0.5);
+    this.lastGear = p.gear;
+    this.lastThrottle = p.throttleOut;
     this.shake = Math.max(0, this.shake - dt * 3);
   }
 

@@ -17,6 +17,10 @@ export interface CarPose {
   steer: number; // front wheel angle rad
   wheelSpin: number[]; // 4 accumulated angles (or single value replicated)
   brake: number;
+  /** 0..1 brake disc temperature (glow) */
+  brakeHeat?: number;
+  /** 0..1 exhaust flame intensity */
+  flame?: number;
 }
 
 /**
@@ -41,6 +45,7 @@ export class CarVisual {
   private cog = 0.5;
   /** exaggerate body motion for a cartoon feel */
   motionScale = 2.2;
+  private flames: THREE.Mesh[] = [];
 
   constructor(setup: CarSetup, opts: { ghost?: boolean; ghostColor?: string } = {}) {
     const A = getAssets();
@@ -72,13 +77,27 @@ export class CarVisual {
       this.wheelSpin.push(spin);
     }
     this.mats = toonify(this.root, { Paint: setup.color, Stripe: setup.accent });
+    // brake discs get their own material so they can glow
+    const disc = this.mats.get('Disc') as THREE.MeshToonMaterial | undefined;
+    if (disc) disc.emissive = new THREE.Color('#ff5a14');
+    if (!opts.ghost) {
+      const flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.6, 0.4), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+      const flameGeo = new THREE.ConeGeometry(0.05, 0.4, 10, 1, true).translate(0, 0.2, 0).rotateX(-Math.PI / 2);
+      for (const x of [-0.49, -0.34, 0.34, 0.49]) {
+        const f = new THREE.Mesh(flameGeo, flameMat);
+        f.position.set(x, 0.27, -2.32);
+        f.visible = false;
+        f.userData.noOutline = true;
+        this.body.add(f);
+        this.flames.push(f);
+      }
+    }
     if (opts.ghost) this.makeGhost(opts.ghostColor ?? '#7fd8ff');
     this.applySetup(setup);
   }
 
   private makeGhost(color: string) {
     const ghostMat = new THREE.MeshToonMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false });
-    (ghostMat.userData as any).outlineParameters = { visible: false };
     this.root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh) {
@@ -138,7 +157,14 @@ export class CarVisual {
       this.wheelSpin[i].rotation.x = p.wheelSpin[i] ?? p.wheelSpin[0];
     }
     const tail = this.mats.get('TailLight') as THREE.MeshToonMaterial | undefined;
-    if (tail && tail.emissive) tail.emissiveIntensity = 0.35 + p.brake * 1.6;
+    if (tail && tail.emissive) tail.emissiveIntensity = 0.6 + p.brake * 3.5;
+    const disc = this.mats.get('Disc') as THREE.MeshToonMaterial | undefined;
+    if (disc) disc.emissiveIntensity = Math.pow(p.brakeHeat ?? 0, 1.5) * 2.2;
+    const fl = p.flame ?? 0;
+    for (const f of this.flames) {
+      f.visible = fl > 0.05;
+      if (f.visible) f.scale.set(0.8 + Math.random() * 0.5, 0.8 + Math.random() * 0.5, fl * (0.6 + Math.random() * 0.8));
+    }
   }
 
   dispose() {

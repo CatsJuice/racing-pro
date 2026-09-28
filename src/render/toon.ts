@@ -1,13 +1,14 @@
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
+import { PostFX } from './post';
 
 let gradient: THREE.DataTexture | null = null;
 
 /** 4-band cel shading ramp. */
 export function toonGradient() {
   if (!gradient) {
-    const data = new Uint8Array([90, 90, 90, 255, 160, 160, 160, 255, 215, 215, 215, 255, 255, 255, 255, 255]);
-    gradient = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
+    const tones = [105, 150, 196, 232, 255];
+    const data = new Uint8Array(tones.flatMap((t) => [t, t, t, 255]));
+    gradient = new THREE.DataTexture(data, tones.length, 1, THREE.RGBAFormat);
     gradient.minFilter = THREE.NearestFilter;
     gradient.magFilter = THREE.NearestFilter;
     gradient.generateMipmaps = false;
@@ -20,13 +21,11 @@ export function toon(color: THREE.ColorRepresentation, opts: THREE.MeshToonMater
   return new THREE.MeshToonMaterial({ color, gradientMap: toonGradient(), ...opts });
 }
 
-export function setOutline(m: THREE.Material, thickness = 0.004, visible = true, color = [0.06, 0.06, 0.1]) {
-  (m.userData as any).outlineParameters = { thickness, color, alpha: 1, visible };
-}
 
 export interface Stage {
   renderer: THREE.WebGLRenderer;
-  effect: OutlineEffect;
+  post: PostFX;
+  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void;
   resize(): void;
 }
 
@@ -36,18 +35,24 @@ export function getStage(): Stage {
   if (stage) return stage;
   const canvas = document.getElementById('gl') as HTMLCanvasElement;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
-  const effect = new OutlineEffect(renderer, { defaultThickness: 0.0035, defaultColor: [0.07, 0.07, 0.12], defaultAlpha: 1 });
+  const post = new PostFX(renderer);
   const resize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
+    post.setSize(window.innerWidth, window.innerHeight);
   };
   window.addEventListener('resize', resize);
   resize();
-  stage = { renderer, effect, resize };
+  const render = (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    post.render(scene, camera);
+  };
+  stage = { renderer, post, render, resize };
   return stage;
 }
 
@@ -67,11 +72,10 @@ export function createEnvironment(scene: THREE.Scene, opts: { shadowSize?: numbe
     }),
   );
   sky.userData.noOutline = true;
-  (sky.material as any).userData.outlineParameters = { visible: false };
   sky.renderOrder = -1;
   sky.frustumCulled = false;
   scene.add(sky);
-  scene.fog = new THREE.Fog(horizon.clone(), 350, 1700);
+  scene.fog = new THREE.Fog(horizon.clone(), 420, 2600);
 
   const hemi = new THREE.HemisphereLight('#dff1ff', '#6b8f4e', 1.1);
   scene.add(hemi);
@@ -90,6 +94,17 @@ export function createEnvironment(scene: THREE.Scene, opts: { shadowSize?: numbe
   sun.shadow.normalBias = 0.02;
   scene.add(sun);
   scene.add(sun.target);
+  // visible sun disc (blooms) in the light's direction
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(60, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3.6, 2.8), fog: false, depthWrite: false }));
+  disc.userData.noOutline = true;
+  disc.renderOrder = -0.5;
+  const sunDir = new THREE.Vector3(-120, 200, -80).normalize();
+  disc.onBeforeRender = (_r, _s, cam) => {
+    disc.position.copy(cam.position).addScaledVector(sunDir, 2200);
+    disc.lookAt(cam.position);
+  };
+  disc.frustumCulled = false;
+  scene.add(disc);
   return { sky, sun, hemi };
 }
 
@@ -120,18 +135,24 @@ export function toonify(root: THREE.Object3D, colors: Record<string, string> = {
       const params: THREE.MeshToonMaterialParameters = { color, gradientMap: toonGradient(), name: key };
       if (SPECIAL_EMISSIVE.test(key) || (src.emissiveIntensity > 0 && src.emissive && src.emissive.getHex() !== 0)) {
         params.emissive = color.clone();
-        params.emissiveIntensity = key === 'TailLight' ? 0.35 : 0.9;
+        params.emissiveIntensity = key === 'TailLight' ? 0.6 : key === 'DrlLight' ? 2.4 : key === 'IndicatorLight' ? 0.9 : 1.5;
+      }
+      if (key === 'LensGlass') {
+        params.transparent = true;
+        params.opacity = 0.28;
+        params.depthWrite = false;
+        params.emissive = new THREE.Color('#ffffff');
+        params.emissiveIntensity = 0.15;
       }
       if (key === 'Glass') {
         params.color = new THREE.Color('#223a5c');
         params.emissive = new THREE.Color('#0d1a2e');
       }
-      if (key === 'Cloud') params.emissive = new THREE.Color('#9fb4c8');
+      if (key === 'Cloud' || key === 'Snow') params.emissive = new THREE.Color('#a9bccf');
       if (key === 'Chrome' || key === 'Rim' || key === 'Disc' || key === 'Steel') {
         params.emissive = color.clone().multiplyScalar(0.18);
       }
       const t = new THREE.MeshToonMaterial(params);
-      setOutline(t, key === 'Glass' || key === 'Decal' || key === 'Stripe' || key === 'Ink' ? 0.0 : 0.0035, !['Ink', 'Stripe', 'Decal', 'CalText', 'Glass'].includes(key));
       cache.set(key, t);
       return t;
     };

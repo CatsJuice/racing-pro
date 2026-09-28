@@ -19,7 +19,6 @@ export class SkidMarks {
       vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6,
     });
-    (m.userData as any).outlineParameters = { visible: false };
     this.mesh = new THREE.Mesh(g, m);
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 2;
@@ -78,7 +77,6 @@ export class Smoke {
 
   constructor() {
     const mat = toon('#ffffff', { transparent: true, opacity: 0.85, depthWrite: false });
-    (mat.userData as any).outlineParameters = { visible: false };
     this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 1), mat, this.max);
     this.mesh.count = 0;
     this.mesh.frustumCulled = false;

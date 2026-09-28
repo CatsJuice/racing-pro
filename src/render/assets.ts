@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export interface Assets {
@@ -14,6 +15,9 @@ export function loadAssets(onProgress?: (p: number) => void): Promise<Assets> {
   if (assets) return Promise.resolve(assets);
   if (pending) return pending;
   const loader = new GLTFLoader();
+  const draco = new DRACOLoader();
+  draco.setDecoderPath(import.meta.env.BASE_URL + 'draco/');
+  loader.setDRACOLoader(draco);
   const base = import.meta.env.BASE_URL + 'models/';
   const files = ['car.glb', 'wheel.glb', 'scenery.glb'];
   const progress = new Array(files.length).fill(0);

@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "check:physics": "tsx scripts/physics-check.ts && STEER=0.045 tsx scripts/tuning-check.ts && ASSIST=novice tsx scripts/keyboard-bot.ts",
-    "models": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/build_models.py"
+    "models": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/build_models.py --"
   },
   "dependencies": {
     "three": "^0.186.1"
