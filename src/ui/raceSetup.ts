@@ -1,4 +1,5 @@
 import type { Screen } from '../app';
+import { ASSIST_LABELS, type AssistLevel } from '../car/physics';
 import { peakPower, type CarSetup } from '../car/setup';
 import { bestLap, fmtTime, getPrefs, listCars, listTracks, setPrefs } from '../core/storage';
 import { toGarage, toMenu, toRace, toTrackEditor } from '../nav';
@@ -33,7 +34,7 @@ export class RaceSetupScreen implements Screen {
         h('section', { class: 'panel' }, h('div', { class: 'row between' }, h('h2', null, '① 选择赛道'), h('button', { class: 'btn small ghost', onclick: () => toTrackEditor() }, '＋ 画新赛道')), this.trackGrid),
         h('section', { class: 'panel' }, h('div', { class: 'row between' }, h('h2', null, '② 选择赛车'), h('button', { class: 'btn small ghost', onclick: () => toGarage(this.car.id) }, '调校 →')), this.carList),
       ),
-      h('div', { class: 'setup-foot panel' }, this.summary, h('button', { class: 'btn go huge', onclick: () => this.start() }, '出发 ▶')),
+      h('div', { class: 'setup-foot panel' }, this.summary, this.assistPicker(), h('button', { class: 'btn go huge', onclick: () => this.start() }, '出发 ▶')),
     );
     this.renderTracks(tracks);
     this.renderCars(cars);
@@ -71,6 +72,26 @@ export class RaceSetupScreen implements Screen {
         ),
       );
     }
+  }
+
+  private assistPicker() {
+    const cur = getPrefs().assist ?? 'novice';
+    const desc: Record<AssistLevel, string> = {
+      novice: '转向限幅 + 自动反打 + 强稳定 + TCS/ABS，键盘也能轻松跑完',
+      standard: '保留转向限幅与适度稳定辅助，需要自己控油门',
+      pro: '无任何辅助，完全由赛车调校决定手感（推荐手柄）',
+    };
+    const tip = h('small', { class: 'dim assist-tip' }, desc[cur]);
+    const seg = h('div', { class: 'seg' }, (['novice', 'standard', 'pro'] as AssistLevel[]).map((l) => h('button', {
+      class: `seg-btn ${l === cur ? 'on' : ''}`,
+      onclick: (e: Event) => {
+        setPrefs({ assist: l });
+        seg.querySelectorAll('.seg-btn').forEach((b) => b.classList.remove('on'));
+        (e.currentTarget as HTMLElement).classList.add('on');
+        tip.textContent = desc[l];
+      },
+    }, ASSIST_LABELS[l])));
+    return h('div', { class: 'assist-pick' }, h('div', { class: 'row' }, h('b', null, '驾驶辅助'), seg), tip);
   }
 
   private renderSummary() {

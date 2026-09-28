@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Screen } from '../app';
 import { CarVisual } from '../car/carVisual';
-import { VehiclePhysics } from '../car/physics';
+import { ASSIST_LABELS, ASSISTS, type AssistLevel, VehiclePhysics } from '../car/physics';
 import { cloneSetup, type CarSetup } from '../car/setup';
 import { bestLap, F, FRAME_STRIDE, fmtTime, getPrefs, type LapRecord, setPrefs, submitLap, uid } from '../core/storage';
 import { toLeaderboard, toMenu, toReplay } from '../nav';
@@ -61,7 +61,9 @@ export class RaceScreen implements Screen {
   private recordAcc = 0;
   private deltaHint = 0;
   private wrongWay = 0;
+  private offTime = 0;
   private ghostEnabled = true;
+  private assistLevel: AssistLevel = 'novice';
   private topSpeed = 0;
   private sessionLaps: { time: number; valid: boolean }[] = [];
 
@@ -76,6 +78,7 @@ export class RaceScreen implements Screen {
     root.innerHTML = '';
     const prefs = getPrefs();
     this.camMode = prefs.camera ?? 0;
+    this.assistLevel = prefs.assist ?? 'novice';
     this.ghostEnabled = prefs.ghost !== false;
 
     const env = createEnvironment(this.scene, { shadowSize: 70 });
@@ -85,6 +88,7 @@ export class RaceScreen implements Screen {
     this.sectorMarks = [this.track.geo.length / 3, (this.track.geo.length * 2) / 3];
 
     this.phys = new VehiclePhysics(this.setup);
+    this.phys.assist = ASSISTS[this.assistLevel];
     this.phys.surfaceFn = (x, z, i) => {
       const r = this.track.surfaceAt(x, z, this.wheelHints[i]);
       this.wheelHints[i] = r.proj.index;
@@ -109,7 +113,8 @@ export class RaceScreen implements Screen {
 
     const best = await bestLap(this.trackData.id);
     if (best) this.setGhost(best);
-    this.hud.message(`${this.trackData.name} · ${this.setup.name}`, 'info', 3);
+    this.hud.message(`${this.trackData.name} · ${this.setup.name} · 辅助：${ASSIST_LABELS[this.assistLevel]}`, 'info', 3);
+    this.hud.setAssist(ASSIST_LABELS[this.assistLevel]);
   }
 
   private setGhost(lap: LapRecord) {
@@ -250,19 +255,22 @@ export class RaceScreen implements Screen {
     if (ds > L / 2) ds -= L;
     if (ds < -L / 2) ds += L;
 
-    // wrong way detection
+    // wrong way: actually travelling backwards along the track (a spin that keeps sliding forward is fine)
     const c = g.samples[this.centreHint];
-    const fwdDot = Math.sin(p.heading) * c.tx + Math.cos(p.heading) * c.tz;
-    if (fwdDot < -0.3 && p.speed > 4) this.wrongWay += dt;
+    const velDot = p.speed > 0.1 ? (p.vx * c.tx + p.vz * c.tz) / p.speed : 1;
+    if (velDot < -0.5 && p.speed > 4) this.wrongWay += dt;
     else this.wrongWay = 0;
-    if (this.wrongWay > 1) {
-      if (this.wrongWay < 1 + dt * 1.5) this.hud.message('逆行！', 'bad', 1.5);
+    if (this.wrongWay > 1.5) {
+      if (this.wrongWay < 1.5 + dt * 1.5) this.hud.message('逆行！', 'bad', 1.5);
       this.invalidate('逆行');
     }
     // shortcut detection
     if (this.lapActive && ds > 45) this.invalidate('抄近路');
     // off track: all four wheels off the tarmac/kerbs
-    if (this.lapActive && this.surfKinds.every((k) => k === 'grass')) this.invalidate('四轮出界');
+    // (a brief graze does not count; must stay fully off for a moment)
+    if (this.surfKinds.every((k) => k === 'grass')) this.offTime += dt;
+    else this.offTime = 0;
+    if (this.lapActive && this.offTime > 0.35) this.invalidate('四轮出界');
 
     if (this.lapActive) {
       const lapT = this.simTime - this.lapStart;
@@ -387,6 +395,7 @@ export class RaceScreen implements Screen {
       date: Date.now(),
       frames,
       topSpeed: this.topSpeed * 3.6,
+      assist: this.assistLevel,
     };
     const prevBest = this.bestTime;
     submitLap(lap).then((rank) => {
@@ -477,6 +486,16 @@ export class RaceScreen implements Screen {
     cam.fov += (fov - cam.fov) * Math.min(1, dt * 3);
   }
 
+  private setAssist(l: AssistLevel) {
+    if (l === this.assistLevel) return;
+    this.assistLevel = l;
+    this.phys.assist = ASSISTS[l];
+    setPrefs({ assist: l });
+    this.hud.setAssist(ASSIST_LABELS[l]);
+    // changing aids mid-lap would mix two categories on the leaderboard
+    this.invalidate('切换了驾驶辅助');
+  }
+
   private togglePause() {
     this.paused = !this.paused;
     if (this.paused) {
@@ -489,6 +508,14 @@ export class RaceScreen implements Screen {
             h('button', { class: 'btn primary', onclick: () => this.togglePause() }, '继续'),
             h('button', { class: 'btn', onclick: () => { this.togglePause(); this.resetToTrack(); } }, '复位到赛道'),
             h('button', { class: 'btn', onclick: () => { this.togglePause(); this.placeOnGrid(); } }, '回到起跑线'),
+            h('div', { class: 'seg assist-seg' }, (['novice', 'standard', 'pro'] as AssistLevel[]).map((l) => h('button', {
+              class: `seg-btn ${l === this.assistLevel ? 'on' : ''}`,
+              onclick: (e: Event) => {
+                this.setAssist(l);
+                (e.currentTarget as HTMLElement).parentElement!.querySelectorAll('.seg-btn').forEach((b) => b.classList.remove('on'));
+                (e.currentTarget as HTMLElement).classList.add('on');
+              },
+            }, `辅助：${ASSIST_LABELS[l]}`))),
             h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, '圈速榜 / 回放'),
             this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id) }, '回放最佳圈') : null,
             h('button', { class: 'btn ghost', onclick: () => toMenu() }, '退出到主菜单'),

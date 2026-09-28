@@ -35,6 +35,28 @@ export interface Surface {
 
 export type SurfaceFn = (x: number, z: number, wheelIndex: number) => Surface;
 
+/** Player-level driving aids, independent from the car setup. */
+export interface DrivingAssist {
+  /** never steer further than the front tyres can use at the current speed */
+  steerLimit: boolean;
+  /** automatic counter-steer toward the direction of travel (0..1) */
+  counterSteer: number;
+  /** minimum yaw stability control (0..1) */
+  stability: number;
+  tcs: boolean;
+  abs: boolean;
+}
+
+export type AssistLevel = 'novice' | 'standard' | 'pro';
+
+export const ASSISTS: Record<AssistLevel, DrivingAssist> = {
+  novice: { steerLimit: true, counterSteer: 0.8, stability: 0.8, tcs: true, abs: true },
+  standard: { steerLimit: true, counterSteer: 0.4, stability: 0.4, tcs: true, abs: true },
+  pro: { steerLimit: false, counterSteer: 0, stability: 0, tcs: false, abs: false },
+};
+
+export const ASSIST_LABELS: Record<AssistLevel, string> = { novice: '新手', standard: '标准', pro: '专业' };
+
 const ASPHALT: Surface = { grip: 1, rolling: 0, kind: 'asphalt' };
 
 export class Wheel {
@@ -134,6 +156,7 @@ export class VehiclePhysics {
   private tireB = 1.86;
 
   surfaceFn: SurfaceFn = () => ASPHALT;
+  assist: DrivingAssist = ASSISTS.pro;
 
   constructor(setup: CarSetup) {
     for (let i = 0; i < 4; i++) this.wheels.push(new Wheel());
@@ -349,9 +372,15 @@ export class VehiclePhysics {
       if (!this.clutchSlip) engineT -= (1 - throttle) * s.engineBraking * engineTorqueCurve(s, this.rpm) * 0.28 * (this.rpm / s.redline);
     }
     // traction control
-    let maxSlip = 0;
-    for (const w of driven) maxSlip = Math.max(maxSlip, w.slipRatio * Math.sign(ratio || 1));
-    if (s.tcs && engineT > 0 && maxSlip > 0.1 && speed > 1) {
+    let maxSlip = 0, maxCombined = 0;
+    for (const w of driven) {
+      maxSlip = Math.max(maxSlip, w.slipRatio * Math.sign(ratio || 1));
+      maxCombined = Math.max(maxCombined, w.combinedSlip);
+    }
+    // traction control also watches combined (lateral + longitudinal) slip, so it catches power oversteer
+    const slipping = maxSlip > 0.1 || (maxCombined > 1.02 && speed > 5);
+    const sliding = this.assist.stability > 0 && speed > 5 && Math.abs(Math.atan2(vyB, Math.abs(vxB))) > 0.12;
+    if ((s.tcs || this.assist.tcs) && engineT > 0 && (slipping || sliding) && speed > 1) {
       this.tcsCut = Math.max(0.15, this.tcsCut - dt * 12);
       this.tcsActive = true;
     } else {
@@ -371,7 +400,19 @@ export class VehiclePhysics {
     const rate = s.steerSpeed * (returning ? 1 + s.caster / 6 : 1) * dt;
     this.steerPos += Math.max(-rate, Math.min(rate, target - this.steerPos));
     const speedFactor = Math.max(0.16, 1 / (1 + s.steerSensitivity * Math.max(0, speed - 4) / 11));
-    const delta = this.steerPos * s.steerLock * DEG * speedFactor;
+    let delta = this.steerPos * s.steerLock * DEG * speedFactor;
+    const A = this.assist;
+    if (A.steerLimit && speed > 5) {
+      // steering angle that already saturates the fronts: kinematic angle for max lateral accel + peak slip angle
+      const mu = s.tireGrip * (1 + this.downforce / (this.m * G));
+      const lim = (s.wheelbase * mu * G) / (speed * speed) + 5.5 * DEG;
+      delta = Math.max(-lim, Math.min(lim, delta));
+    }
+    if (A.counterSteer > 0 && speed > 4 && vxB > 0) {
+      const beta = Math.atan2(vyB, vxB);
+      if (Math.abs(beta) > 0.03) delta += A.counterSteer * (beta - Math.sign(beta) * 0.03);
+    }
+    delta = Math.max(-s.steerLock * DEG, Math.min(s.steerLock * DEG, delta));
     this.steerAngle = delta;
     const wb = s.wheelbase;
     let dL = delta, dR = delta;
@@ -456,7 +497,7 @@ export class VehiclePhysics {
       let Tb = brake * s.brakeTorque * (w.front ? s.brakeBias : 1 - s.brakeBias) / 2;
       if (!w.front) Tb += input.handbrake * s.handbrakeTorque / 2;
       w.absActive = false;
-      if (s.abs && brake > 0.05 && w.slipRatio < -0.11 && Math.abs(vl) > 2) {
+      if ((s.abs || this.assist.abs) && brake > 0.05 && w.slipRatio < -0.11 && Math.abs(vl) > 2) {
         Tb *= 0.15;
         w.absActive = true;
         this.absActive = true;
@@ -518,11 +559,13 @@ export class VehiclePhysics {
       Fy -= 0.6 * chassisTotal * (vyB / speed);
     }
     // stability assist: damp yaw rate beyond the kinematic target
-    if (s.stability > 0 && speed > 3) {
+    const stab = Math.max(s.stability, this.assist.stability);
+    if (stab > 0 && speed > 3) {
+      // allowed yaw band: from zero up to the kinematic target (plus a little), in the steered direction only
       const target = (vxB * Math.tan(delta)) / wb;
-      const lim = Math.abs(target) + 0.15;
-      const excess = this.yawRate - Math.max(-lim, Math.min(lim, this.yawRate));
-      Mz -= s.stability * 6 * this.Iz * excess;
+      const lo = Math.min(0, target) - 0.12, hi = Math.max(0, target) + 0.12;
+      const excess = this.yawRate - Math.max(lo, Math.min(hi, this.yawRate));
+      Mz -= stab * 6 * this.Iz * excess;
     }
     // tiny yaw damping for numerical calm at rest
     if (speed < 1) Mz -= this.yawRate * this.Iz * 2;

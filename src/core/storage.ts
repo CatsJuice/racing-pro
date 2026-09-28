@@ -1,3 +1,4 @@
+import type { AssistLevel } from '../car/physics';
 import { BUILTIN_CARS, type CarSetup, normalizeSetup } from '../car/setup';
 import { BUILTIN_TRACKS, type TrackData } from '../track/track';
 
@@ -80,6 +81,7 @@ export interface Prefs {
   muted?: boolean;
   ghost?: boolean;
   camera?: number;
+  assist?: AssistLevel;
 }
 
 export function getPrefs(): Prefs {
@@ -108,6 +110,7 @@ export interface LapRecord {
   date: number;
   frames: Float32Array;
   topSpeed: number;
+  assist?: AssistLevel;
 }
 
 export type LapSummary = Omit<LapRecord, 'frames'>;

@@ -90,7 +90,7 @@ export class Smoke {
     this.parts.push({
       x: x + (Math.random() - 0.5) * 0.3, y: 0.25, z: z + (Math.random() - 0.5) * 0.3,
       vx: vx * 0.25 + (Math.random() - 0.5), vy: 0.8 + Math.random() * 0.8, vz: vz * 0.25 + (Math.random() - 0.5),
-      life: 0, max: dust ? 0.9 : 1.4 + Math.random() * 0.6, size: dust ? 0.8 : 1,
+      life: 0, max: dust ? 0.8 : 0.9 + Math.random() * 0.4, size: dust ? 0.8 : 1,
     });
     (this.parts[this.parts.length - 1] as any).dust = dust;
   }
@@ -102,7 +102,7 @@ export class Smoke {
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
       p.vx *= 0.96; p.vz *= 0.96;
       const k = p.life / p.max;
-      const s = p.size * (0.4 + 2.2 * Math.sqrt(k)) * (k > 0.7 ? (1 - k) / 0.3 : 1);
+      const s = p.size * (0.35 + 1.1 * Math.sqrt(k)) * (k > 0.6 ? (1 - k) / 0.4 : 1);
       this.m4.compose(new THREE.Vector3(p.x, p.y, p.z), this.q, new THREE.Vector3(s, s, s));
       this.mesh.setMatrixAt(i, this.m4);
       this.c.set((p as any).dust ? '#b89160' : '#f2f2f2');

@@ -32,6 +32,7 @@ export class Hud {
   private shiftLight = h('div', { class: 'shift-light' });
   private absEl = h('div', { class: 'assist' }, 'ABS');
   private tcsEl = h('div', { class: 'assist' }, 'TCS');
+  private assistEl = h('div', { class: 'assist level' });
   private tires = [0, 1, 2, 3].map(() => h('div', { class: 'tire' }, h('div', { class: 'tire-load' })));
   private thrBar = h('div', { class: 'pedal-fill thr' });
   private brkBar = h('div', { class: 'pedal-fill brk' });
@@ -73,7 +74,7 @@ export class Hud {
           h('div', { class: 'gear-wrap' }, this.shiftLight, this.gearEl),
         ),
         h('div', { class: 'rpm-bar' }, this.rpmFill, this.rpmText),
-        h('div', { class: 'row assists' }, this.absEl, this.tcsEl),
+        h('div', { class: 'row assists' }, this.absEl, this.tcsEl, this.assistEl),
       ),
       h('div', { class: 'hud-bl panel' },
         h('div', { class: 'tires' }, this.tires),
@@ -86,6 +87,10 @@ export class Hud {
       this.msgEl,
       h('div', { class: 'hud-help' }, 'W/S 油门刹车 · A/D 转向 · 空格 手刹 · Q/E 换挡 · R 复位 · C 视角 · G 幽灵车 · M 静音 · Esc 暂停'),
     );
+  }
+
+  setAssist(label: string) {
+    this.assistEl.textContent = `辅助 ${label}`;
   }
 
   message(text: string, kind: 'info' | 'good' | 'bad' = 'info', seconds = 2.5) {

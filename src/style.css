@@ -371,3 +371,9 @@ input[type='range'] { accent-color: var(--yellow); height: 22px; }
   .stat.wide { grid-column: span 2; }
   .curve-wrap { display: none; }
 }
+
+.assist.level { background: rgba(67, 196, 107, 0.35); color: #fff; }
+.assist-seg { justify-content: center; }
+.assist-pick { display: flex; flex-direction: column; gap: 4px; max-width: 460px; }
+.assist-pick .row { gap: 12px; }
+.assist-tip { font-size: 12px; }
