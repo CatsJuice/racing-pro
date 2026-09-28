@@ -1,0 +1,4 @@
+node_modules
+dist
+blender/previews
+.DS_Store
