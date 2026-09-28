@@ -112,3 +112,52 @@ export class Smoke {
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
   }
 }
+
+/** Autumn leaves drifting down around a focus point. */
+export class FallingLeaves {
+  mesh: THREE.InstancedMesh;
+  private leaves: { x: number; y: number; z: number; vy: number; phase: number; spin: THREE.Vector3; rot: THREE.Euler }[] = [];
+  private m4 = new THREE.Matrix4();
+  private q = new THREE.Quaternion();
+  private s = new THREE.Vector3(1, 1, 1);
+  private p = new THREE.Vector3();
+  private t = 0;
+
+  constructor(count = 260, private range = 45) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([0.18, 0, 0, 0, 0.11, 0, -0.18, 0, 0, 0, -0.11, 0], 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    const mat = toon('#ffffff', { side: THREE.DoubleSide });
+    this.mesh = new THREE.InstancedMesh(geo, mat, count);
+    this.mesh.frustumCulled = false;
+    this.mesh.userData.noOutline = true;
+    const palette = ['#ff7a2e', '#ff5f9e', '#ffc933', '#e8342e', '#ffa23a'].map((c) => new THREE.Color(c));
+    for (let i = 0; i < count; i++) {
+      this.leaves.push({
+        x: (Math.random() - 0.5) * range * 2, y: Math.random() * 14, z: (Math.random() - 0.5) * range * 2,
+        vy: 0.5 + Math.random() * 0.8, phase: Math.random() * 10,
+        spin: new THREE.Vector3(Math.random() * 3, Math.random() * 3, Math.random() * 3), rot: new THREE.Euler(),
+      });
+      this.mesh.setColorAt(i, palette[i % palette.length]);
+    }
+  }
+
+  update(dt: number, cx: number, cz: number) {
+    this.t += dt;
+    const R = this.range;
+    this.leaves.forEach((l, i) => {
+      l.y -= l.vy * dt;
+      l.x += Math.sin(this.t * 0.9 + l.phase) * dt * 0.8 + dt * 0.6;
+      l.z += Math.cos(this.t * 0.7 + l.phase) * dt * 0.5;
+      // keep leaves in a box around the focus (wrap around)
+      if (l.y < 0.05) { l.y = 12 + Math.random() * 3; }
+      if (l.x - cx > R) l.x -= 2 * R; else if (l.x - cx < -R) l.x += 2 * R;
+      if (l.z - cz > R) l.z -= 2 * R; else if (l.z - cz < -R) l.z += 2 * R;
+      l.rot.set(l.rot.x + l.spin.x * dt, l.rot.y + l.spin.y * dt, l.rot.z + l.spin.z * dt);
+      this.m4.compose(this.p.set(l.x, l.y, l.z), this.q.setFromEuler(l.rot), this.s);
+      this.mesh.setMatrixAt(i, this.m4);
+    });
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}

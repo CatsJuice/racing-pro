@@ -4,11 +4,14 @@ import type { Screen } from '../app';
 import { CarVisual } from '../car/carVisual';
 import { ASSIST_LABELS } from '../car/physics';
 import { fetchBoard, fetchOnlineLap } from '../core/online';
-import { F, FRAME_STRIDE, fmtDelta, fmtTime, getLap, getTrack, lapsForTrack, type LapRecord } from '../core/storage';
+import { F, FRAME_STRIDE, fmtDelta, fmtTime, getLap, getPrefs, getTrack, lapsForTrack, type LapRecord } from '../core/storage';
 import { isOfficial } from '../track/official';
 import { toLeaderboard, toReplay } from '../nav';
 import { loadAssets } from '../render/assets';
-import { createEnvironment, followSun, getStage } from '../render/toon';
+import { Environment } from '../render/environment';
+import { FallingLeaves } from '../game/effects';
+import { getStage } from '../render/toon';
+import { timeControls } from '../ui/timeControls';
 import { TrackScene } from '../track/trackScene';
 import { h } from '../ui/dom';
 import { cssColor, frameCount, get, sampleAt, speedColor, timeAtDistance } from './frames';
@@ -31,7 +34,8 @@ export class ReplayScreen implements Screen {
   private track!: TrackScene;
   private car!: CarVisual;
   private cmpCar: CarVisual | null = null;
-  private sun!: THREE.DirectionalLight;
+  private env!: Environment;
+  private leaves = new FallingLeaves();
   private line: LineInfo | null = null;
   private cmpLine: LineInfo | null = null;
   private markers = new THREE.Group();
@@ -85,8 +89,9 @@ export class ReplayScreen implements Screen {
       return;
     }
 
-    const env = createEnvironment(this.scene, { shadowSize: 90 });
-    this.sun = env.sun;
+    const prefs = getPrefs();
+    this.env = new Environment(this.scene, { shadowSize: 90, hour: prefs.hour ?? 16.8 });
+    this.env.speed = prefs.timeFlow ?? 0;
     this.track = new TrackScene(trackData);
     this.scene.add(this.track.group);
     this.car = new CarVisual(lap.car);
@@ -114,6 +119,8 @@ export class ReplayScreen implements Screen {
     }
     this.minV = mn;
     this.maxV = Math.max(mn + 1, mx);
+    this.scene.add(this.leaves.mesh);
+    this.env.collect();
     this.rebuildLines();
     this.buildMarkers();
     this.scene.add(this.markers);
@@ -323,6 +330,7 @@ export class ReplayScreen implements Screen {
         this.ui.rpm,
         h('div', { class: 'pedals' }, h('div', { class: 'pedal' }, this.ui.brk), h('div', { class: 'pedal' }, this.ui.thr)),
         legend,
+        h('details', { class: 'time-details' }, h('summary', null, '🌗 时间与画面'), timeControls(this.env)),
         h('div', { class: 'hint dim' }, '左键拖动旋转 · 右键平移 · 滚轮缩放', h('br'), '空格 播放/暂停 · ←/→ 快退/快进'),
       ),
       h('div', { class: 'replay-bottom panel' },
@@ -530,7 +538,10 @@ export class ReplayScreen implements Screen {
     }
     this.prevTarget.copy(target);
     this.controls.update();
-    followSun(this.sun, this.controls.target.x, this.controls.target.z);
+    this.env.update(dt, time);
+    this.track.setNight(this.env.night);
+    this.leaves.update(dt, this.controls.target.x, this.controls.target.z);
+    this.env.follow(this.controls.target.x, this.controls.target.z);
     const camDist = this.camera.position.distanceTo(this.controls.target);
     for (const l of [this.line, this.cmpLine]) if (l) l.width.value = l.baseWidth * Math.max(1, camDist / 45);
     const ms = Math.max(1, camDist / 60);
@@ -546,7 +557,8 @@ export class ReplayScreen implements Screen {
     this.ui.brk.style.height = `${f[F.brake] * 100}%`;
     this.drawChart(Math.max(0, f[F.s]), cmpS);
 
-    getStage().render(this.scene, this.camera);
+    getStage().post.dofStrength = 0.7;
+    getStage().render(this.scene, this.camera, this.env);
   }
 
   unmount() {

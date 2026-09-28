@@ -496,6 +496,11 @@ def build_scenery():
         origin_to(mo)
         out.append(mo)
 
+    from foliage import build_ground_cover, build_props, build_trees
+    build_trees(out, done)
+    build_ground_cover(done)
+    build_props(done)
+
     export(os.path.join(OUT, "scenery.glb"), out)
     if PREVIEW:
         big = {"mountain", "mountain_snow", "cloud", "balloon"}
@@ -512,3 +517,10 @@ def build_scenery():
             if o.name == "grandstand":
                 o.location = (0, 0, 0)
         render_preview("grandstand.png", target=(0, 3, 3), dist=30, elev=18, azim=-25)
+        showcase = ["tree_orange", "tree_pink", "tree_yellow", "tree_green", "tree_red", "tree_pine2", "bush_pink", "grass_clump", "grass_tall", "lantern", "street_lamp", "basalt"]
+        for o in out:
+            o.hide_render = o.name not in showcase
+            if o.name in showcase:
+                i = showcase.index(o.name)
+                o.location = ((i % 6) * 5 - 12.5, (i // 6) * 7, 0)
+        render_preview("foliage.png", target=(0, 3.5, 2.5), dist=32, elev=15, azim=0)

@@ -7,7 +7,7 @@ export interface Controls {
   shiftDown: boolean;
 }
 
-type Action = 'up' | 'down' | 'left' | 'right' | 'hand' | 'shiftUp' | 'shiftDown' | 'reset' | 'rewind' | 'camera' | 'pause' | 'ghost' | 'mute';
+type Action = 'up' | 'down' | 'left' | 'right' | 'hand' | 'shiftUp' | 'shiftDown' | 'reset' | 'rewind' | 'time' | 'camera' | 'pause' | 'ghost' | 'mute';
 
 const KEYMAP: Record<string, Action> = {
   KeyW: 'up', ArrowUp: 'up',
@@ -23,6 +23,7 @@ const KEYMAP: Record<string, Action> = {
   Escape: 'pause', KeyP: 'pause',
   KeyG: 'ghost',
   KeyM: 'mute',
+  KeyT: 'time',
 };
 
 export class Input {

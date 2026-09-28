@@ -82,6 +82,11 @@ export interface Prefs {
   ghost?: boolean;
   camera?: number;
   assist?: AssistLevel;
+  /** time of day 0..24 */
+  hour?: number;
+  /** game hours per real second */
+  timeFlow?: number;
+  dof?: boolean;
 }
 
 export function getPrefs(): Prefs {

@@ -8,6 +8,7 @@ import { TrackGeometry, type TrackData } from '../track/track';
 import { fetchBoard } from '../core/online';
 import { isOfficial } from '../track/official';
 import { h } from './dom';
+import { timeControls } from './timeControls';
 import { playerBadge } from './profile';
 
 export class RaceSetupScreen implements Screen {
@@ -38,7 +39,7 @@ export class RaceSetupScreen implements Screen {
         h('section', { class: 'panel' }, h('div', { class: 'row between' }, h('h2', null, '① 选择赛道'), h('button', { class: 'btn small ghost', onclick: () => toTrackEditor() }, '＋ 画新赛道')), this.trackGrid),
         h('section', { class: 'panel' }, h('div', { class: 'row between' }, h('h2', null, '② 选择赛车'), h('button', { class: 'btn small ghost', onclick: () => toGarage(this.car.id) }, '调校 →')), this.carList),
       ),
-      h('div', { class: 'setup-foot panel' }, this.summary, this.assistPicker(), h('button', { class: 'btn go huge', onclick: () => this.start() }, '出发 ▶')),
+      h('div', { class: 'setup-foot panel' }, this.summary, this.assistPicker(), h('div', { class: 'setup-time' }, timeControls()), h('button', { class: 'btn go huge', onclick: () => this.start() }, '出发 ▶')),
     );
     this.renderTracks(tracks);
     this.renderCars(cars);

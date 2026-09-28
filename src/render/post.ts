@@ -4,7 +4,9 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import type { Environment } from './environment';
 
 /**
  * Renders view-space normals of the opaque, outline-able geometry into its own target.
@@ -66,9 +68,9 @@ class InkPass extends Pass {
         resolution: { value: new THREE.Vector2(1, 1) },
         cameraNear: { value: 0.1 },
         cameraFar: { value: 1000 },
-        ink: { value: new THREE.Color('#1b1d2a') },
+        ink: { value: new THREE.Color('#2a1a44') },
         thickness: { value: 1.0 },
-        strength: { value: 0.85 },
+        strength: { value: 0.42 },
       },
       vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: /* glsl */ `
@@ -95,10 +97,10 @@ class InkPass extends Pass {
             nMin = min(nMin, dot(n, nrm(vUv + offs[i])));
           }
           float depthEdge = smoothstep(0.035, 0.09, dMax);
-          float normalEdge = smoothstep(0.72, 0.5, nMin) * (1.0 - smoothstep(60.0, 220.0, d));
+          float normalEdge = smoothstep(0.45, 0.2, nMin) * (1.0 - smoothstep(40.0, 120.0, d)) * 0.6;
           float fade = 1.0 - smoothstep(350.0, 1200.0, d);
           float edge = clamp(max(depthEdge, normalEdge), 0.0, 1.0) * fade * strength;
-          col.rgb = mix(col.rgb, ink, edge);
+          col.rgb = mix(col.rgb, col.rgb * ink * 2.2, edge);
           gl_FragColor = col;
         }`,
     });
@@ -121,19 +123,48 @@ class InkPass extends Pass {
   }
 }
 
+/** separable tilt-shift blur with a sharp focus band around `r` */
+function tiltShader(horizontal: boolean) {
+  return {
+    uniforms: { tDiffuse: { value: null }, amount: { value: 0 }, r: { value: 0.5 }, band: { value: 0.22 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D tDiffuse; uniform float amount; uniform float r; uniform float band;
+      varying vec2 vUv;
+      void main(){
+        float k = amount * smoothstep(0.0, 0.5 - band, abs(r - vUv.y) - band);
+        vec2 dir = ${horizontal ? 'vec2(k, 0.0)' : 'vec2(0.0, k)'};
+        vec4 sum = texture2D(tDiffuse, vUv) * 0.1633;
+        sum += (texture2D(tDiffuse, vUv + dir) + texture2D(tDiffuse, vUv - dir)) * 0.1531;
+        sum += (texture2D(tDiffuse, vUv + dir * 2.0) + texture2D(tDiffuse, vUv - dir * 2.0)) * 0.12245;
+        sum += (texture2D(tDiffuse, vUv + dir * 3.0) + texture2D(tDiffuse, vUv - dir * 3.0)) * 0.0918;
+        sum += (texture2D(tDiffuse, vUv + dir * 4.0) + texture2D(tDiffuse, vUv - dir * 4.0)) * 0.051;
+        gl_FragColor = sum;
+      }`,
+  };
+}
+
 class GradePass extends Pass {
   private quad: FullScreenQuad;
   material = new THREE.ShaderMaterial({
-    uniforms: { tDiffuse: { value: null }, saturation: { value: 1.1 }, contrast: { value: 1.04 }, vignette: { value: 0.28 }, tint: { value: new THREE.Color(1, 1, 1) } },
+    uniforms: {
+      tDiffuse: { value: null }, saturation: { value: 1.14 }, contrast: { value: 1.0 }, vignette: { value: 0.32 }, tint: { value: new THREE.Color(1, 1, 1) },
+      shadowTint: { value: new THREE.Color('#7050c0') }, highTint: { value: new THREE.Color('#ffb070') }, split: { value: 0.16 },
+    },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
       uniform sampler2D tDiffuse; uniform float saturation; uniform float contrast; uniform float vignette; uniform vec3 tint;
+      uniform vec3 shadowTint; uniform vec3 highTint; uniform float split;
       varying vec2 vUv;
       void main(){
         vec4 c = texture2D(tDiffuse, vUv);
         float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
         c.rgb = mix(vec3(l), c.rgb, saturation);
         c.rgb = (c.rgb - 0.18) * contrast + 0.18;
+        // split toning: cool purple shadows, warm highlights
+        float lum = clamp(l, 0.0, 1.0);
+        c.rgb += (shadowTint - 0.5) * (1.0 - smoothstep(0.0, 0.55, lum)) * split;
+        c.rgb += (highTint - 0.5) * smoothstep(0.45, 1.1, lum) * split * 0.8;
         vec2 q = vUv - 0.5;
         c.rgb *= 1.0 - vignette * smoothstep(0.25, 0.85, dot(q, q) * 2.2);
         c.rgb *= tint;
@@ -160,6 +191,12 @@ export class PostFX {
   private inkPass: InkPass;
   private bloom: UnrealBloomPass;
   grade: GradePass;
+  private tiltH: ShaderPass;
+  private tiltV: ShaderPass;
+  /** user setting: allow depth of field at all */
+  dof = 1;
+  /** per-view strength requested by the current screen (0 = none) */
+  dofStrength = 0;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera();
 
@@ -181,6 +218,10 @@ export class PostFX {
     this.composer.addPass(this.inkPass);
     this.composer.addPass(this.bloom);
     this.composer.addPass(this.grade);
+    this.tiltH = new ShaderPass(tiltShader(true));
+    this.tiltV = new ShaderPass(tiltShader(false));
+    this.composer.addPass(this.tiltH);
+    this.composer.addPass(this.tiltV);
     this.composer.addPass(new OutputPass());
     this.composer.addPass(new SMAAPass());
   }
@@ -190,9 +231,25 @@ export class PostFX {
     this.composer.setSize(w, h);
     // keep the ink line ~1.5 CSS px wide regardless of the device pixel ratio
     this.inkPass.material.uniforms.thickness.value = Math.max(1, this.renderer.getPixelRatio() * 1.25);
+    this.size.set(w, h);
   }
 
-  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
+  private size = new THREE.Vector2(1, 1);
+
+  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, env?: Environment) {
+    const n = env?.night ?? 0;
+    this.grade.material.uniforms.tint.value.copy(env ? env.grade : new THREE.Color(1, 1, 1));
+    this.grade.material.uniforms.split.value = 0.1 + n * 0.04;
+    this.bloom.strength = 0.45 + n * 0.55;
+    this.bloom.threshold = 0.95 - n * 0.35;
+    const s = this.dof * this.dofStrength;
+    const on = s > 0.01;
+    this.tiltH.enabled = this.tiltV.enabled = on;
+    if (on) {
+      this.tiltH.uniforms.amount.value = (2.2 * s) / this.size.x;
+      this.tiltV.uniforms.amount.value = (2.2 * s) / this.size.y;
+      this.tiltH.uniforms.r.value = this.tiltV.uniforms.r.value = 0.45;
+    }
     this.renderPass.scene = scene;
     this.renderPass.camera = camera;
     this.normalPass.scene = scene;

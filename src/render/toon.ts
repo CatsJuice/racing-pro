@@ -1,16 +1,21 @@
 import * as THREE from 'three';
+import type { Environment } from './environment';
 import { PostFX } from './post';
 
 let gradient: THREE.DataTexture | null = null;
 
-/** 4-band cel shading ramp. */
+/**
+ * Soft cel ramp: a dark plateau, a smooth (linear-filtered) terminator and a bright
+ * plateau. Shadowed sides fall back to the tinted hemisphere light, which gives the
+ * purple/blue shadows of the art direction.
+ */
 export function toonGradient() {
   if (!gradient) {
-    const tones = [105, 150, 196, 232, 255];
+    const tones = [70, 88, 120, 175, 225, 248, 255, 255];
     const data = new Uint8Array(tones.flatMap((t) => [t, t, t, 255]));
     gradient = new THREE.DataTexture(data, tones.length, 1, THREE.RGBAFormat);
-    gradient.minFilter = THREE.NearestFilter;
-    gradient.magFilter = THREE.NearestFilter;
+    gradient.minFilter = THREE.LinearFilter;
+    gradient.magFilter = THREE.LinearFilter;
     gradient.generateMipmaps = false;
     gradient.needsUpdate = true;
   }
@@ -21,11 +26,32 @@ export function toon(color: THREE.ColorRepresentation, opts: THREE.MeshToonMater
   return new THREE.MeshToonMaterial({ color, gradientMap: toonGradient(), ...opts });
 }
 
+/** shared wind clock for foliage / grass sway */
+export const wind = { value: 0 };
+
+function addWind(m: THREE.Material, amount: number, pow: number) {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uWind = wind;
+    sh.vertexShader = 'uniform float uWind;\n' + sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        vec3 ip = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+      #else
+        vec3 ip = vec3(0.0);
+      #endif
+      float hgt = max(position.y, 0.0);
+      float w = sin(uWind * 1.6 + ip.x * 0.21 + ip.z * 0.17 + position.x * 0.8) + 0.4 * sin(uWind * 3.1 + ip.z * 0.5 + position.z);
+      transformed.xz += vec2(w, w * 0.6) * ${amount.toFixed(3)} * pow(hgt, ${pow.toFixed(2)});`,
+    );
+  };
+  m.customProgramCacheKey = () => `wind${amount}${pow}`;
+}
 
 export interface Stage {
   renderer: THREE.WebGLRenderer;
   post: PostFX;
-  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void;
+  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, env?: Environment): void;
   resize(): void;
 }
 
@@ -47,77 +73,21 @@ export function getStage(): Stage {
   };
   window.addEventListener('resize', resize);
   resize();
-  const render = (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+  const start = performance.now();
+  const render = (scene: THREE.Scene, camera: THREE.PerspectiveCamera, env?: Environment) => {
+    wind.value = (performance.now() - start) / 1000;
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    post.render(scene, camera);
+    post.render(scene, camera, env);
   };
   stage = { renderer, post, render, resize };
   return stage;
 }
 
-/** Gradient sky dome + fog + sun/hemisphere lights. */
-export function createEnvironment(scene: THREE.Scene, opts: { shadowSize?: number } = {}) {
-  const top = new THREE.Color('#4aa3ff');
-  const horizon = new THREE.Color('#d8f0ff');
-  const sky = new THREE.Mesh(
-    new THREE.SphereGeometry(2400, 32, 16),
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      fog: false,
-      uniforms: { top: { value: top }, horizon: { value: horizon } },
-      vertexShader: `varying vec3 vP; void main(){ vP = (modelMatrix*vec4(position,1.)).xyz - cameraPosition; gl_Position = projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.);} `,
-      fragmentShader: `uniform vec3 top; uniform vec3 horizon; varying vec3 vP; void main(){ float h = normalize(vP).y; float k = smoothstep(-0.02, 0.45, h); gl_FragColor = vec4(mix(horizon, top, k), 1.); }`,
-    }),
-  );
-  sky.userData.noOutline = true;
-  sky.renderOrder = -1;
-  sky.frustumCulled = false;
-  scene.add(sky);
-  scene.fog = new THREE.Fog(horizon.clone(), 420, 2600);
-
-  const hemi = new THREE.HemisphereLight('#dff1ff', '#6b8f4e', 1.1);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight('#fff4dc', 2.2);
-  sun.position.set(-120, 200, -80);
-  sun.castShadow = true;
-  const S = opts.shadowSize ?? 60;
-  sun.shadow.camera.left = -S;
-  sun.shadow.camera.right = S;
-  sun.shadow.camera.top = S;
-  sun.shadow.camera.bottom = -S;
-  sun.shadow.camera.near = 10;
-  sun.shadow.camera.far = 600;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.02;
-  scene.add(sun);
-  scene.add(sun.target);
-  // visible sun disc (blooms) in the light's direction
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(60, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3.6, 2.8), fog: false, depthWrite: false }));
-  disc.userData.noOutline = true;
-  disc.renderOrder = -0.5;
-  const sunDir = new THREE.Vector3(-120, 200, -80).normalize();
-  disc.onBeforeRender = (_r, _s, cam) => {
-    disc.position.copy(cam.position).addScaledVector(sunDir, 2200);
-    disc.lookAt(cam.position);
-  };
-  disc.frustumCulled = false;
-  scene.add(disc);
-  return { sky, sun, hemi };
-}
-
-/** Keeps the directional light's shadow frustum centred on a focus point. */
-export function followSun(sun: THREE.DirectionalLight, x: number, z: number) {
-  sun.position.set(x - 120, 200, z - 80);
-  sun.target.position.set(x, 0, z);
-}
-
 const SPECIAL_EMISSIVE = /Light$/;
 
 /**
- * Converts glTF PBR materials to cel-shaded toon materials. Materials named
+ * Converts glTF PBR materials to soft cel-shaded materials. Materials named
  * "Paint"/"Stripe" get the provided colours.
  */
 export function toonify(root: THREE.Object3D, colors: Record<string, string> = {}, cache = new Map<string, THREE.Material>()) {
@@ -132,7 +102,7 @@ export function toonify(root: THREE.Object3D, colors: Record<string, string> = {
       if (hit) return hit;
       const src = m as THREE.MeshStandardMaterial;
       const color = colors[key] ? new THREE.Color(colors[key]) : src.color?.clone() ?? new THREE.Color('#fff');
-      const params: THREE.MeshToonMaterialParameters = { color, gradientMap: toonGradient(), name: key };
+      const params: THREE.MeshToonMaterialParameters = { color, gradientMap: toonGradient(), name: key, vertexColors: src.vertexColors };
       if (SPECIAL_EMISSIVE.test(key) || (src.emissiveIntensity > 0 && src.emissive && src.emissive.getHex() !== 0)) {
         params.emissive = color.clone();
         params.emissiveIntensity = key === 'TailLight' ? 0.6 : key === 'DrlLight' ? 2.4 : key === 'IndicatorLight' ? 0.9 : 1.5;
@@ -145,14 +115,18 @@ export function toonify(root: THREE.Object3D, colors: Record<string, string> = {
         params.emissiveIntensity = 0.15;
       }
       if (key === 'Glass') {
-        params.color = new THREE.Color('#223a5c');
-        params.emissive = new THREE.Color('#0d1a2e');
+        params.color = new THREE.Color('#2b3566');
+        params.emissive = new THREE.Color('#1a1638');
       }
       if (key === 'Cloud' || key === 'Snow') params.emissive = new THREE.Color('#a9bccf');
-      if (key === 'Chrome' || key === 'Rim' || key === 'Disc' || key === 'Steel') {
-        params.emissive = color.clone().multiplyScalar(0.18);
-      }
+      if (key === 'Chrome' || key === 'Rim' || key === 'Disc' || key === 'Steel') params.emissive = color.clone().multiplyScalar(0.18);
+      const leaf = key.startsWith('Leaf_');
+      const grass = key === 'GrassClump';
+      if (leaf || grass) params.side = THREE.DoubleSide;
+      if (leaf) params.emissive = color.clone().multiplyScalar(0.12); // light bleeding through leaves
       const t = new THREE.MeshToonMaterial(params);
+      if (leaf) addWind(t, 0.03, 1.0);
+      if (grass) addWind(t, 0.12, 1.6);
       cache.set(key, t);
       return t;
     };

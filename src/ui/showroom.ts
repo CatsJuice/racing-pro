@@ -3,7 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CarVisual } from '../car/carVisual';
 import type { CarSetup } from '../car/setup';
 import { getAssets, part } from '../render/assets';
-import { createEnvironment, getStage, toon, toonify } from '../render/toon';
+import { getPrefs } from '../core/storage';
+import { Environment } from '../render/environment';
+import { getStage, toon, toonify } from '../render/toon';
 
 /** Turntable scene for the menu and garage. */
 export class Showroom {
@@ -13,12 +15,13 @@ export class Showroom {
   controls: OrbitControls | null = null;
   private turntable = new THREE.Group();
   autoRotate = true;
+  env: Environment;
   /** horizontal shift of the car in screen space (fraction of width) */
   offsetX = 0;
   private spin = 0;
 
   constructor(opts: { interactive?: boolean } = {}) {
-    createEnvironment(this.scene, { shadowSize: 12 });
+    this.env = new Environment(this.scene, { shadowSize: 12, hour: getPrefs().hour ?? 16.8 });
     this.scene.fog = new THREE.Fog('#d8f0ff', 60, 420);
     const ground = new THREE.Mesh(new THREE.CircleGeometry(2200, 64), toon('#8fd765'));
     ground.rotation.x = -Math.PI / 2;
@@ -94,7 +97,9 @@ export class Showroom {
     const W = window.innerWidth, H = window.innerHeight;
     this.camera.clearViewOffset();
     if (this.offsetX) this.camera.setViewOffset(W, H, -this.offsetX * W, 0, W, H);
-    stage.render(this.scene, this.camera);
+    this.env.update(dt, performance.now() / 1000);
+    stage.post.dofStrength = 0;
+    stage.render(this.scene, this.camera, this.env);
   }
 
   dispose() {

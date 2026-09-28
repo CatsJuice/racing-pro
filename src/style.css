@@ -422,3 +422,12 @@ body.rewinding #gl { filter: saturate(0.15) sepia(0.45) hue-rotate(175deg) contr
 .track-section { display: flex; flex-direction: column; gap: 8px; }
 .track-section h3 { font-size: 14px; color: var(--yellow); }
 .official-tag { background: var(--blue); color: #fff; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 0 6px; }
+
+/* time of day */
+.time-controls { display: flex; flex-direction: column; gap: 6px; min-width: 240px; }
+.time-controls input[type='range'] { width: 100%; }
+.time-controls .chips { flex-wrap: wrap; }
+.time-icon { font-size: 16px; }
+.setup-time { width: 280px; }
+.time-details summary { cursor: pointer; font-weight: 700; font-size: 13px; margin-top: 4px; }
+.modal.pause .time-controls { border-bottom: 2px dashed rgba(255,255,255,0.2); padding-bottom: 10px; }

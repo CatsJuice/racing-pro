@@ -447,10 +447,12 @@ def export(path, objs):
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
         o.select_set(True)
-    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True,
-                              export_apply=True, export_yup=True,
-                              export_draco_mesh_compression_enable=True,
-                              export_draco_mesh_compression_level=7)
+    kw = dict(filepath=path, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
+              export_draco_mesh_compression_enable=True, export_draco_mesh_compression_level=7)
+    try:
+        bpy.ops.export_scene.gltf(**kw, export_vertex_color="ACTIVE")
+    except TypeError:
+        bpy.ops.export_scene.gltf(**kw)
     print("exported", path)
 
 

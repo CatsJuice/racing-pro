@@ -8,13 +8,15 @@ import { fetchBoard, fetchOnlineLap, identity, submitOnline } from '../core/onli
 import { toLeaderboard, toMenu, toReplay } from '../nav';
 import { isOfficial } from '../track/official';
 import { loadAssets } from '../render/assets';
-import { createEnvironment, followSun, getStage } from '../render/toon';
+import { Environment, hourLabel, TIME_PRESETS } from '../render/environment';
+import { getStage } from '../render/toon';
+import { timeControls } from '../ui/timeControls';
 import { FrameRecorder, RECORD_HZ, sampleAt, timeAtDistance } from '../replay/frames';
 import type { TrackData } from '../track/track';
 import { TrackScene } from '../track/trackScene';
 import { h } from '../ui/dom';
 import { CarAudio } from './audio';
-import { SkidMarks, Smoke } from './effects';
+import { FallingLeaves, SkidMarks, Smoke } from './effects';
 import { Hud } from './hud';
 import { Input } from './input';
 
@@ -50,12 +52,14 @@ export class RaceScreen implements Screen {
   private phys!: VehiclePhysics;
   private ghost: CarVisual | null = null;
   private ghostLap: LapRecord | null = null;
-  private sun!: THREE.DirectionalLight;
+  private env!: Environment;
+  private headlight: THREE.SpotLight | null = null;
   private input = new Input();
   private audio: CarAudio | null = null;
   private hud!: Hud;
   private skids = new SkidMarks();
   private smoke = new Smoke();
+  private leaves = new FallingLeaves();
   private root!: HTMLElement;
   private pauseEl: HTMLElement | null = null;
   private paused = false;
@@ -119,8 +123,10 @@ export class RaceScreen implements Screen {
     this.assistLevel = prefs.assist ?? 'novice';
     this.ghostEnabled = prefs.ghost !== false;
 
-    const env = createEnvironment(this.scene, { shadowSize: 70 });
-    this.sun = env.sun;
+    this.env = new Environment(this.scene, { shadowSize: 70, hour: prefs.hour ?? 16.8 });
+    this.env.speed = prefs.timeFlow ?? 0;
+    getStage().post.dof = prefs.dof === false ? 0 : 1;
+    getStage().post.dofStrength = 0;
     this.track = new TrackScene(this.trackData);
     this.scene.add(this.track.group);
     this.sectorMarks = [this.track.geo.length / 3, (this.track.geo.length * 2) / 3];
@@ -135,9 +141,16 @@ export class RaceScreen implements Screen {
     };
     this.car = new CarVisual(this.setup);
     this.scene.add(this.car.root);
-    this.scene.add(this.skids.mesh, this.smoke.mesh);
+    // real headlights for the player's car at night
+    const hl = new THREE.SpotLight('#fff1cf', 0, 70, 0.55, 0.65, 1.2);
+    hl.position.set(0, 0.7, 2.1);
+    hl.target.position.set(0, 0, 25);
+    this.car.root.add(hl, hl.target);
+    this.headlight = hl;
+    this.scene.add(this.skids.mesh, this.smoke.mesh, this.leaves.mesh);
     this.placeOnGrid();
 
+    this.env.collect();
     this.hud = new Hud(this.trackData);
     root.append(this.hud.el);
     root.className = 'race';
@@ -251,6 +264,11 @@ export class RaceScreen implements Screen {
       setPrefs({ ghost: this.ghostEnabled });
       this.hud.message(this.ghostEnabled ? '幽灵车：开' : '幽灵车：关', 'info', 1.2);
     }
+    if (this.input.consume('time')) {
+      const next = TIME_PRESETS.find((t) => t.h > this.env.hour + 0.1) ?? TIME_PRESETS[0];
+      this.setHour(next.h);
+      this.hud.message(`时间：${next.label} ${hourLabel(next.h)}`, 'info', 1.2);
+    }
     if (this.input.consume('mute') && this.audio) {
       this.audio.setMuted(!this.audio.isMuted);
       setPrefs({ muted: this.audio.isMuted });
@@ -281,7 +299,14 @@ export class RaceScreen implements Screen {
     this.updateGhost();
     this.track.update(time);
     this.updateCamera(dt);
-    followSun(this.sun, p.x, p.z);
+    this.env.update(dt, time);
+    this.env.follow(p.x, p.z);
+    this.track.setNight(this.env.night);
+    this.leaves.update(dt, p.x, p.z);
+    if (this.headlight) {
+      this.headlight.intensity = this.env.night * 90;
+      this.headlight.visible = this.env.night > 0.05;
+    }
     this.hud.updateCar(p, dt);
     this.hud.drawMinimap(p, this.ghost?.root.visible ? { x: this.ghost.root.position.x, z: this.ghost.root.position.z } : null);
     this.render();
@@ -370,7 +395,9 @@ export class RaceScreen implements Screen {
   }
 
   private render() {
-    getStage().render(this.scene, this.camera);
+    // depth of field only suits the high helicopter view; driving views stay sharp
+    getStage().post.dofStrength = this.camMode === 3 ? 0.6 : 0;
+    getStage().render(this.scene, this.camera, this.env);
   }
 
   private collide() {
@@ -675,6 +702,11 @@ export class RaceScreen implements Screen {
     cam.fov += (fov - cam.fov) * Math.min(1, dt * 3);
   }
 
+  private setHour(h: number) {
+    this.env.setHour(h);
+    setPrefs({ hour: this.env.hour });
+  }
+
   private setAssist(l: AssistLevel) {
     if (l === this.assistLevel) return;
     this.assistLevel = l;
@@ -693,6 +725,7 @@ export class RaceScreen implements Screen {
       this.pauseEl = h('div', { class: 'modal-wrap' },
         h('div', { class: 'modal panel pause' },
           h('h2', null, '暂停'),
+          timeControls(this.env),
           h('div', { class: 'col' },
             h('button', { class: 'btn primary', onclick: () => this.togglePause() }, '继续'),
             h('button', { class: 'btn', onclick: () => { this.togglePause(); this.resetToTrack(); } }, '复位到赛道'),

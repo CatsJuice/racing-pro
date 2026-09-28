@@ -58,14 +58,14 @@ function textures() {
   if (texCache) return texCache;
   texCache = {
     road: canvasTexture(512, 512, (c) => {
-      c.fillStyle = '#676b74';
+      c.fillStyle = '#857a8e';
       c.fillRect(0, 0, 512, 512);
-      blotches(c, 512, 512, 26, ['rgba(70,74,82,0.35)', 'rgba(110,114,122,0.25)'], 30, 90, 3);
-      speckle(c, 512, 512, 9000, ['#5e626a', '#727680', '#575a62', '#80848d', '#6b6f78'], 2.2, 5);
+      blotches(c, 512, 512, 26, ['rgba(80,64,96,0.35)', 'rgba(140,118,140,0.25)'], 30, 90, 3);
+      speckle(c, 512, 512, 9000, ['#7a6f84', '#90849a', '#70667a', '#9c90a6', '#887c92'], 2.2, 5);
       // rubbered-in racing line, slightly darker in the middle third
       const g = c.createLinearGradient(0, 0, 512, 0);
       g.addColorStop(0.28, 'rgba(30,32,38,0)');
-      g.addColorStop(0.5, 'rgba(30,32,38,0.18)');
+      g.addColorStop(0.5, 'rgba(40,28,52,0.2)');
       g.addColorStop(0.72, 'rgba(30,32,38,0)');
       c.fillStyle = g;
       c.fillRect(0, 0, 512, 512);
@@ -94,18 +94,16 @@ function textures() {
       c.fillRect(0, 124, 64, 4);
     }),
     gravel: canvasTexture(256, 256, (c) => {
-      c.fillStyle = '#e1c68c';
+      c.fillStyle = '#f0a15a';
       c.fillRect(0, 0, 256, 256);
-      blotches(c, 256, 256, 14, ['rgba(200,170,110,0.4)', 'rgba(245,225,180,0.4)'], 20, 60, 12);
-      speckle(c, 256, 256, 5000, ['#cdb173', '#f0dcae', '#bfa066', '#d9bd84', '#a88a56'], 2.4, 13);
+      blotches(c, 256, 256, 14, ['rgba(220,120,70,0.45)', 'rgba(255,200,130,0.4)'], 20, 60, 12);
+      speckle(c, 256, 256, 5000, ['#e08a4a', '#ffc080', '#d4783c', '#f5ab66', '#c56a3a'], 2.4, 13);
     }),
     grass: canvasTexture(512, 512, (c) => {
-      c.fillStyle = '#7cc653';
+      c.fillStyle = '#9db43f';
       c.fillRect(0, 0, 512, 512);
-      c.fillStyle = 'rgba(150,220,100,0.35)';
-      c.fillRect(0, 0, 512, 256);
-      blotches(c, 512, 512, 30, ['rgba(95,170,65,0.45)', 'rgba(160,215,95,0.4)', 'rgba(120,190,70,0.35)'], 40, 130, 21);
-      speckle(c, 512, 512, 4000, ['#72bb4a', '#8fd765', '#6bb244', '#9ae06a'], 3, 22);
+      blotches(c, 512, 512, 34, ['rgba(120,160,50,0.5)', 'rgba(210,190,70,0.45)', 'rgba(150,175,55,0.45)', 'rgba(235,150,70,0.3)'], 40, 140, 21);
+      speckle(c, 512, 512, 5000, ['#8aa53a', '#b8c24a', '#7b9a34', '#d2b848', '#e0904a'], 3, 22);
     }),
     checker: canvasTexture(128, 32, (c) => {
       for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) {
@@ -251,6 +249,16 @@ export class TrackScene {
       for (let k = 0; k < cols - 1; k++) {
         vert(a, k, a.s); vert(a, k + 1, a.s); vert(b, k, sb);
         vert(a, k + 1, a.s); vert(b, k + 1, sb); vert(b, k, sb);
+      }
+    }
+    // make every triangle face up (the offsets can be in either order)
+    for (let t = 0; t < pos.length; t += 9) {
+      const ax = pos[t + 3] - pos[t], az = pos[t + 5] - pos[t + 2];
+      const bx = pos[t + 6] - pos[t], bz = pos[t + 8] - pos[t + 2];
+      if (az * bx - ax * bz < 0) {
+        for (let k = 0; k < 3; k++) [pos[t + 3 + k], pos[t + 6 + k]] = [pos[t + 6 + k], pos[t + 3 + k]];
+        const u = (t / 9) * 6;
+        for (let k = 0; k < 2; k++) [uv[u + 2 + k], uv[u + 4 + k]] = [uv[u + 4 + k], uv[u + 2 + k]];
       }
     }
     const geo = new THREE.BufferGeometry();
@@ -631,11 +639,13 @@ export class TrackScene {
     }
 
     // vegetation: forest clusters + scattered trees
-    const lists: Record<string, Placement[]> = { tree_pine: [], tree_round: [], tree_birch: [], tree_poplar: [], bush: [], bush_flower: [], rock: [] };
+    const lists: Record<string, Placement[]> = {
+      tree_orange: [], tree_pink: [], tree_yellow: [], tree_green: [], tree_red: [], tree_pine2: [], bush_pink: [], bush_yellow: [], basalt: [], rock: [],
+    };
     const margin = 320;
     const area = (b.maxX - b.minX + 2 * margin) * (b.maxZ - b.minZ + 2 * margin);
     const clusters = Math.max(6, Math.round(area / 60000));
-    const kinds = ['tree_pine', 'tree_round', 'tree_birch', 'tree_poplar'];
+    const kinds = ['tree_orange', 'tree_pink', 'tree_yellow', 'tree_green', 'tree_red', 'tree_pine2'];
     for (let cI = 0; cI < clusters; cI++) {
       const cx = R.range(b.minX - margin, b.maxX + margin), cz = R.range(b.minZ - margin, b.maxZ + margin);
       const main = kinds[Math.floor(R.next() * kinds.length)];
@@ -653,26 +663,31 @@ export class TrackScene {
     for (let k = 0; k < 260; k++) {
       const x = R.range(b.minX - margin, b.maxX + margin), z = R.range(b.minZ - margin, b.maxZ + margin);
       const roll = R.next();
-      const kind = roll < 0.25 ? 'tree_round' : roll < 0.4 ? 'tree_pine' : roll < 0.6 ? 'bush' : roll < 0.78 ? 'bush_flower' : roll < 0.88 ? 'tree_birch' : 'rock';
+      const kind = roll < 0.2 ? 'tree_orange' : roll < 0.32 ? 'tree_pink' : roll < 0.42 ? 'tree_yellow' : roll < 0.6 ? 'bush_pink' : roll < 0.76 ? 'bush_yellow' : roll < 0.86 ? 'tree_red' : roll < 0.93 ? 'basalt' : 'rock';
       if (!this.free(x, z, 2, outside + 1)) continue;
       lists[kind].push({ x, z, rot: R.range(0, Math.PI * 2), scale: R.range(0.8, 1.4) });
       occ.push({ x, z, r: 1.5 });
     }
     for (const k of Object.keys(lists)) this.instanced(k, lists[k]);
 
-    // grass tufts & flowers close to the track (cheap detail near the camera)
-    const tufts: Placement[] = [], flowers: Placement[] = [];
-    for (let k = 0; k < Math.min(3000, g.length * 1.6); k++) {
+    // grass clumps & flowers close to the track (cheap detail near the camera)
+    const tufts: Placement[] = [], flowers: Placement[] = [], tall: Placement[] = [], greenTufts: Placement[] = [];
+    for (let k = 0; k < Math.min(9000, g.length * 4.5); k++) {
       const i = Math.floor(R.next() * g.count);
       const side = R.next() > 0.5 ? 1 : -1;
-      const lat = hw + KERB_W + R.range(1.5, 60);
+      const lat = hw + KERB_W + 1.2 + Math.pow(R.next(), 1.8) * 55; // denser close to the tarmac
       if (this.gravel[i] === side && lat < hw + KERB_W + GRAVEL_W + 1) continue;
       const p = this.at(i, lat * side);
       if (g.distanceTo(p.x, p.z, 3) < hw + KERB_W + 1) continue;
-      (R.next() < 0.82 ? tufts : flowers).push({ x: p.x, z: p.z, rot: R.range(0, 6.28), scale: R.range(0.7, 1.5) });
+      const roll = R.next();
+      const list = roll < 0.6 ? tufts : roll < 0.78 ? greenTufts : roll < 0.9 ? tall : flowers;
+      list.push({ x: p.x, z: p.z, rot: R.range(0, 6.28), scale: R.range(0.8, 1.6) });
     }
-    this.instanced('grass_tuft', tufts, false);
+    this.instanced('grass_clump', tufts, false);
+    this.instanced('grass_clump_green', greenTufts, false);
+    this.instanced('grass_tall', tall, false);
     this.instanced('flowers', flowers, false);
+    this.buildLanterns(R);
 
     // horizon mountains
     const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
@@ -697,6 +712,60 @@ export class TrackScene {
       const o = this.single('balloon', cx + R.range(-span * 0.4, span * 0.4), cz + R.range(-span * 0.4, span * 0.4), R.range(0, 6), 1.6, R.range(50, 90));
       o.traverse((m) => { if ((m as THREE.Mesh).isMesh) (m as THREE.Mesh).castShadow = false; });
       this.floaters.push({ obj: o, speed: R.range(0.5, 1), phase: R.range(0, 6), base: o.position.clone() });
+    }
+  }
+
+  private poolMat: THREE.MeshBasicMaterial | null = null;
+
+  /** stone lanterns along the track (glow at night, with fake light pools on the ground) */
+  private buildLanterns(R: ReturnType<typeof rng>) {
+    const g = this.geo;
+    const hw = g.width / 2;
+    const lanterns: Placement[] = [], lamps: Placement[] = [];
+    let side = 1;
+    for (let s = 20; s < g.length - 10; s += 30) {
+      side = -side;
+      const i = Math.floor((s / g.length) * g.count);
+      if (this.gravel[i] === side) continue;
+      const d = (hw + KERB_W + 2.6) * side;
+      const p = this.at(i, d);
+      if (!this.free(p.x, p.z, 0.8, KERB_W + 2)) continue;
+      lanterns.push({ x: p.x, z: p.z, rot: R.range(0, 6.28), scale: 1.1 });
+    }
+    // street lamps along the start straight
+    for (let k = -3; k <= 3; k++) {
+      for (const sd of [1, -1]) {
+        const p = g.pointAt(k * 24 + 10);
+        const x = p.x + p.nx * (hw + KERB_W + 4) * sd, z = p.z + p.nz * (hw + KERB_W + 4) * sd;
+        lamps.push({ x, z, rot: Math.atan2(-p.nx * sd, -p.nz * sd) + Math.PI, scale: 1.2 });
+      }
+    }
+    this.instanced('lantern', lanterns);
+    this.instanced('street_lamp', lamps);
+    // additive light pools
+    const pools = [...lanterns.map((l) => ({ ...l, r: 6.5 })), ...lamps.map((l) => ({ ...l, r: 9 }))];
+    if (!pools.length) return;
+    const tex = canvasTexture(128, 128, (c) => {
+      const grd = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grd.addColorStop(0, 'rgba(255,200,110,1)');
+      grd.addColorStop(0.45, 'rgba(255,160,80,0.45)');
+      grd.addColorStop(1, 'rgba(255,140,60,0)');
+      c.fillStyle = grd;
+      c.fillRect(0, 0, 128, 128);
+    }, false);
+    this.poolMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0, fog: false });
+    const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), this.poolMat, pools.length);
+    const m4 = new THREE.Matrix4();
+    pools.forEach((p, i) => im.setMatrixAt(i, m4.makeScale(p.r, 1, p.r).setPosition(p.x, 0.07, p.z)));
+    im.userData.noOutline = true;
+    im.renderOrder = 4;
+    this.group.add(im);
+  }
+
+  setNight(n: number) {
+    if (this.poolMat) {
+      this.poolMat.opacity = Math.min(1, n * 1.6);
+      this.poolMat.visible = n > 0.02;
     }
   }
 
