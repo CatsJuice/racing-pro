@@ -393,3 +393,32 @@ body.rewinding #gl { filter: saturate(0.15) sepia(0.45) hue-rotate(175deg) contr
 }
 .rewind-badge small { font-family: 'JetBrains Mono', monospace; font-size: 20px; }
 @keyframes rw-flicker { from { opacity: 0.85; } to { opacity: 1; } }
+
+/* player identity */
+.player-badge {
+  display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 15px; cursor: pointer;
+  background: #fff; color: var(--ink); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 14px 4px 6px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.player-badge .avatar { width: 28px; height: 28px; display: grid; place-items: center; background: var(--yellow); border-radius: 50%; border: 2px solid var(--ink); }
+.player-badge .edit { font-size: 12px; opacity: 0.6; }
+.player-badge:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.menu-top-right { position: absolute; top: 18px; right: 20px; }
+.name-dialog .text { font-size: 18px; }
+.name-dialog h2 { font-size: 24px; }
+
+.hud-ghost { font-size: 12px; color: #7fd8ff; min-height: 0; }
+.hud-online { font-size: 12px; color: var(--yellow); }
+
+/* global leaderboard */
+.grow { flex: 1; }
+.side-title { font-size: 13px; font-weight: 800; color: var(--yellow); margin: 6px 4px 2px; }
+.board-status { display: flex; gap: 16px; align-items: center; font-size: 14px; flex-wrap: wrap; }
+.me-rank { background: var(--yellow); color: var(--ink); font-weight: 800; border-radius: 8px; padding: 1px 10px; }
+.board-table tr.mine td { background: rgba(67, 196, 107, 0.22); }
+.board-table tr.mine td:first-child { box-shadow: inset 4px 0 0 var(--green); }
+.board-table .player { white-space: nowrap; }
+.board-table .player .tag { margin-left: 6px; }
+.track-section { display: flex; flex-direction: column; gap: 8px; }
+.track-section h3 { font-size: 14px; color: var(--yellow); }
+.official-tag { background: var(--blue); color: #fff; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 0 6px; }

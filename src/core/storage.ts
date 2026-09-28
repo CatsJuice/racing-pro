@@ -93,10 +93,7 @@ export function setPrefs(p: Partial<Prefs>) {
 }
 
 // ---------------------------------------------------------------- laps (IndexedDB)
-export const FRAME_STRIDE = 14;
-export const F = {
-  t: 0, x: 1, z: 2, heading: 3, pitch: 4, roll: 5, heave: 6, speed: 7, steer: 8, throttle: 9, brake: 10, s: 11, gear: 12, rpm: 13,
-} as const;
+export { F, FRAME_STRIDE } from './lapFormat';
 
 export interface LapRecord {
   id: string;
@@ -112,6 +109,10 @@ export interface LapRecord {
   topSpeed: number;
   assist?: AssistLevel;
   rewinds?: number;
+  /** set for laps fetched from the global leaderboard */
+  playerName?: string;
+  userId?: string;
+  online?: boolean;
 }
 
 export type LapSummary = Omit<LapRecord, 'frames'>;

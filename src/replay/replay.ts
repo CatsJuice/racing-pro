@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Screen } from '../app';
 import { CarVisual } from '../car/carVisual';
+import { ASSIST_LABELS } from '../car/physics';
+import { fetchBoard, fetchOnlineLap } from '../core/online';
 import { F, FRAME_STRIDE, fmtDelta, fmtTime, getLap, getTrack, lapsForTrack, type LapRecord } from '../core/storage';
+import { isOfficial } from '../track/official';
 import { toLeaderboard, toReplay } from '../nav';
 import { loadAssets } from '../render/assets';
 import { createEnvironment, followSun, getStage } from '../render/toon';
@@ -50,19 +53,32 @@ export class ReplayScreen implements Screen {
   private keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private deltaHint = 0;
 
-  constructor(private lapId: string, private compareId?: string) {}
+  /** `compareId` may be prefixed with "o:" (global board) or "l:" (local history). */
+  constructor(private lapId: string, private compareId?: string, private online = false) {}
+
+  private async load(ref: string, online: boolean): Promise<LapRecord | null> {
+    if (ref.startsWith('o:')) return fetchOnlineLap(ref.slice(2));
+    if (ref.startsWith('l:')) return (await getLap(ref.slice(2))) ?? null;
+    return online ? fetchOnlineLap(ref) : (await getLap(ref)) ?? null;
+  }
 
   async mount(root: HTMLElement) {
     root.append(h('div', { class: 'loading' }, '加载回放…'));
     await loadAssets();
-    const lap = await getLap(this.lapId);
+    let lap: LapRecord | null = null;
+    let err = '找不到这条圈速记录';
+    try {
+      lap = await this.load(this.lapId, this.online);
+      if (lap && this.compareId) this.cmp = await this.load(this.compareId, this.online).catch(() => null);
+    } catch (e) {
+      err = (e as Error).message;
+    }
     root.innerHTML = '';
     if (!lap) {
-      root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, '找不到这条圈速记录'), h('button', { class: 'btn', onclick: () => toLeaderboard() }, '返回'))));
+      root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, err), h('button', { class: 'btn', onclick: () => toLeaderboard() }, '返回'))));
       return;
     }
     this.lap = lap;
-    if (this.compareId) this.cmp = (await getLap(this.compareId)) ?? null;
     const trackData = getTrack(lap.trackId);
     if (!trackData) {
       root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, '赛道已被删除'), h('button', { class: 'btn', onclick: () => toLeaderboard() }, '返回'))));
@@ -269,23 +285,34 @@ export class ReplayScreen implements Screen {
     this.ui.time = h('div', { class: 'mono' }, '0:00.000');
     this.ui.delta = h('div', { class: 'mono' }, '');
 
-    const laps = lapsForTrack(lap.trackId);
     const cmpSelect = h('select', { class: 'select', onchange: (e: Event) => {
       const v = (e.target as HTMLSelectElement).value;
-      toReplay(this.lap.id, v || undefined);
+      toReplay(this.lap.id, v || undefined, this.online);
     } }, h('option', { value: '' }, '不对比'));
-    laps.then((ls) => ls.filter((l) => l.id !== lap.id).forEach((l, i) => {
-      const o = h('option', { value: l.id }, `#${i + 1} ${fmtTime(l.time)} · ${l.carName}`);
-      if (l.id === this.compareId) o.selected = true;
-      cmpSelect.append(o);
+    const addOpt = (value: string, label: string, group: HTMLElement) => {
+      const o = h('option', { value }, label);
+      if (value === this.compareId || value.slice(2) === this.compareId) o.selected = true;
+      group.append(o);
+    };
+    if (isOfficial(lap.trackId)) {
+      const g = h('optgroup', { label: '全球榜' });
+      cmpSelect.append(g);
+      fetchBoard(lap.trackId, 50).then((b) => b.entries.filter((e) => e.lapId !== lap!.id).forEach((e) => {
+        addOpt('o:' + e.lapId, `#${b.entries.indexOf(e) + 1} ${fmtTime(e.time)} · ${e.name}`, g);
+      })).catch(() => {});
+    }
+    const lg = h('optgroup', { label: '本地记录' });
+    cmpSelect.append(lg);
+    lapsForTrack(lap.trackId).then((ls) => ls.filter((l) => l.id !== lap!.id).forEach((l, i) => {
+      addOpt('l:' + l.id, `#${i + 1} ${fmtTime(l.time)} · ${l.carName}`, lg);
     }));
 
     root.append(
       h('div', { class: 'replay-top panel' },
         h('button', { class: 'btn ghost', onclick: () => toLeaderboard(lap.trackId) }, '← 圈速榜'),
         h('div', { class: 'replay-title' },
-          h('div', { class: 'title' }, `${lap.trackName} · ${fmtTime(lap.time)}`),
-          h('div', { class: 'dim' }, `${lap.carName} · ${new Date(lap.date).toLocaleString()} · 极速 ${Math.round(lap.topSpeed)} km/h · 分段 ${lap.sectors.map((s) => s.toFixed(2)).join(' / ')}`),
+          h('div', { class: 'title' }, `${lap.trackName} · ${fmtTime(lap.time)}${lap.playerName ? ` · 👤 ${lap.playerName}` : ''}`),
+          h('div', { class: 'dim' }, `${lap.carName} · ${lap.car.drivetrain} · 辅助${ASSIST_LABELS[lap.assist ?? 'pro']}${lap.rewinds ? ` · ⏪${lap.rewinds}` : ''} · ${new Date(lap.date).toLocaleString()} · 极速 ${Math.round(lap.topSpeed)} km/h · 分段 ${lap.sectors.map((s) => s.toFixed(2)).join(' / ')}`),
         ),
         h('div', { class: 'row' }, h('span', { class: 'dim' }, '对比：'), cmpSelect),
       ),

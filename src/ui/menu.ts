@@ -1,7 +1,11 @@
 import type { Screen } from '../app';
 import { getCar, getPrefs, listCars } from '../core/storage';
 import { toGarage, toLeaderboard, toRaceSetup, toTracks } from '../nav';
+import { identity } from '../core/online';
 import { h } from './dom';
+import { nameDialog, playerBadge } from './profile';
+
+let promptedThisSession = false;
 import { Showroom } from './showroom';
 
 export class MenuScreen implements Screen {
@@ -26,11 +30,16 @@ export class MenuScreen implements Screen {
           item('🏁', '开始游戏', '选择赛道与赛车，无限计时赛', () => toRaceSetup(), true),
           item('🛣️', '赛道管理', '自己画赛道，编辑与管理', () => toTracks()),
           item('🔧', '赛车管理', '车库 · 调校 50+ 项参数', () => toGarage()),
-          item('🏆', '圈速榜', '每条赛道的排行与回放', () => toLeaderboard()),
+          item('🏆', '圈速榜', '官方赛道全球排行 · 本地记录 · 回放', () => toLeaderboard()),
         ),
         h('div', { class: 'menu-foot dim' }, `当前赛车：${car.name}`),
       ),
+      h('div', { class: 'menu-top-right' }, playerBadge()),
     );
+    if (!identity() && !promptedThisSession) {
+      promptedThisSession = true;
+      setTimeout(() => nameDialog({ first: true }), 400);
+    }
   }
 
   update(dt: number) {

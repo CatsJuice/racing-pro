@@ -27,9 +27,9 @@ export async function toRaceSetup() {
   await app.go(new RaceSetupScreen());
 }
 
-export async function toRace(track: TrackData, car: CarSetup) {
+export async function toRace(track: TrackData, car: CarSetup, opts: { ghostLapId?: string } = {}) {
   const { RaceScreen } = await import('./game/race');
-  await app.go(new RaceScreen(track, car));
+  await app.go(new RaceScreen(track, car, opts));
 }
 
 export async function toLeaderboard(trackId?: string) {
@@ -37,7 +37,7 @@ export async function toLeaderboard(trackId?: string) {
   await app.go(new LeaderboardScreen(trackId));
 }
 
-export async function toReplay(lapId: string, compareId?: string) {
+export async function toReplay(lapId: string, compareId?: string, online = false) {
   const { ReplayScreen } = await import('./replay/replay');
-  await app.go(new ReplayScreen(lapId, compareId));
+  await app.go(new ReplayScreen(lapId, compareId, online));
 }

@@ -5,19 +5,31 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit -p . && tsc --noEmit -p worker && vite build",
     "preview": "vite preview",
     "check:physics": "tsx scripts/physics-check.ts && STEER=0.045 tsx scripts/tuning-check.ts && ASSIST=novice tsx scripts/keyboard-bot.ts",
-    "models": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/build_models.py --"
+    "models": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/build_models.py --",
+    "deploy": "pnpm build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply racing-pro --local",
+    "db:migrate:remote": "wrangler d1 migrations apply racing-pro --remote"
   },
   "dependencies": {
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.62.0",
+    "@cloudflare/workers-types": "^5.20260928.1",
     "@types/three": "^0.186.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "wrangler": "^4.143.0"
   },
-  "packageManager": "pnpm@10.12.4"
+  "packageManager": "pnpm@10.12.4",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd"
+    ]
+  }
 }

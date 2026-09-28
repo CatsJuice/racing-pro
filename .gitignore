@@ -3,3 +3,4 @@ dist
 blender/previews
 .DS_Store
 __pycache__
+.wrangler

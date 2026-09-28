@@ -4,7 +4,9 @@ import { CarVisual } from '../car/carVisual';
 import { ASSIST_LABELS, ASSISTS, type AssistLevel, VehiclePhysics } from '../car/physics';
 import { cloneSetup, type CarSetup } from '../car/setup';
 import { bestLap, F, FRAME_STRIDE, fmtTime, getPrefs, type LapRecord, setPrefs, submitLap, uid } from '../core/storage';
+import { fetchBoard, fetchOnlineLap, identity, submitOnline } from '../core/online';
 import { toLeaderboard, toMenu, toReplay } from '../nav';
+import { isOfficial } from '../track/official';
 import { loadAssets } from '../render/assets';
 import { createEnvironment, followSun, getStage } from '../render/toon';
 import { FrameRecorder, RECORD_HZ, sampleAt, timeAtDistance } from '../replay/frames';
@@ -99,7 +101,11 @@ export class RaceScreen implements Screen {
   private topSpeed = 0;
   private sessionLaps: { time: number; valid: boolean }[] = [];
 
-  constructor(private trackData: TrackData, private setup: CarSetup) {
+  private official: boolean;
+  private ghostKind: 'personal' | 'challenge' = 'personal';
+
+  constructor(private trackData: TrackData, private setup: CarSetup, private opts: { ghostLapId?: string } = {}) {
+    this.official = isOfficial(trackData.id);
     this.setup = cloneSetup(setup);
   }
 
@@ -144,19 +150,58 @@ export class RaceScreen implements Screen {
     }
 
     const best = await bestLap(this.trackData.id);
-    if (best) this.setGhost(best);
+    if (best) {
+      this.bestTime = best.time;
+      this.bestSectors = [best.sectors[0] ?? null, best.sectors[1] ?? null, best.sectors[2] ?? null];
+    }
+    if (this.opts.ghostLapId) {
+      try {
+        this.setGhost(await fetchOnlineLap(this.opts.ghostLapId), 'challenge');
+      } catch (e) {
+        this.hud.message(`幽灵车加载失败：${(e as Error).message}`, 'bad');
+        if (best) this.setGhost(best, 'personal');
+      }
+    } else if (best) this.setGhost(best, 'personal');
+    if (this.official) {
+      this.hud.setOnline(identity() ? '🌍 全球榜' : '🌍 未设置车手名，圈速不会上传');
+      fetchBoard(this.trackData.id, 1).then((b) => {
+        const wr = b.entries[0];
+        const mine = b.me ? `🌍 我：全球第 ${b.me.rank} / ${b.total}` : '🌍 全球榜';
+        this.hud.setOnline(wr ? `${mine} · 纪录 ${wr.name} ${fmtTime(wr.time)}` : `${mine} · 暂无纪录`);
+      }).catch(() => this.hud.setOnline('🌍 离线（无法连接服务器）'));
+    }
     this.hud.message(`${this.trackData.name} · ${this.setup.name} · 辅助：${ASSIST_LABELS[this.assistLevel]}`, 'info', 3);
     this.hud.setAssist(ASSIST_LABELS[this.assistLevel]);
   }
 
-  private setGhost(lap: LapRecord) {
+  private setGhost(lap: LapRecord, kind: 'personal' | 'challenge') {
     this.ghostLap = lap;
-    this.bestTime = lap.time;
-    this.bestSectors = [lap.sectors[0] ?? null, lap.sectors[1] ?? null, lap.sectors[2] ?? null];
+    this.ghostKind = kind;
+    this.deltaHint = 0;
+    this.refreshGhostLabel();
     this.ghost?.dispose();
     this.ghost = new CarVisual(lap.car, { ghost: true });
     this.ghost.root.visible = false;
     this.scene.add(this.ghost.root);
+  }
+
+  private refreshGhostLabel() {
+    const g = this.ghostLap;
+    if (!g) return this.hud.setGhostInfo(null);
+    const who = g.playerName ?? '我';
+    this.hud.setGhostInfo(`${this.ghostKind === 'challenge' ? '挑战' : '幽灵'}：${who} ${fmtTime(g.time)}`);
+  }
+
+  private async challengeWorldRecord() {
+    try {
+      const b = await fetchBoard(this.trackData.id, 1);
+      const top = b.entries[0];
+      if (!top) return this.hud.message('还没有世界纪录', 'info');
+      this.setGhost(await fetchOnlineLap(top.lapId), 'challenge');
+      this.hud.message(`挑战 ${top.name} 的 ${fmtTime(top.time)}`, 'good');
+    } catch (e) {
+      this.hud.message((e as Error).message, 'bad');
+    }
   }
 
   private placeOnGrid() {
@@ -522,16 +567,27 @@ export class RaceScreen implements Screen {
       rewinds: this.rewindsThisLap,
     };
     const prevBest = this.bestTime;
+    const personalBest = prevBest == null || time < prevBest;
+    if (personalBest) this.bestTime = time;
     submitLap(lap).then((rank) => {
-      if (prevBest == null || time < prevBest) {
-        this.hud.message(`🏆 新纪录！${fmtTime(time)}`, 'good', 3.5);
-        this.setGhost(lap);
-      } else if (rank > 0) {
-        this.hud.message(`圈速 ${fmtTime(time)} · 排名第 ${rank}`, 'good', 3);
-      } else {
-        this.hud.message(`圈速 ${fmtTime(time)}`, 'info', 3);
+      if (personalBest) {
+        this.hud.message(`🏆 个人最佳！${fmtTime(time)}`, 'good', 3.5);
+        if (this.ghostKind === 'personal') this.setGhost(lap, 'personal');
+      } else if (!this.official) {
+        this.hud.message(rank > 0 ? `圈速 ${fmtTime(time)} · 本地第 ${rank}` : `圈速 ${fmtTime(time)}`, rank > 0 ? 'good' : 'info', 3);
       }
     });
+    if (this.official) {
+      if (!identity()) {
+        this.hud.message(`圈速 ${fmtTime(time)} · 设置车手名后才能上传全球榜`, 'info', 3);
+      } else {
+        submitOnline(lap).then((r) => {
+          this.hud.setOnline(`🌍 全球第 ${r.rank}`);
+          if (r.improved) this.hud.message(r.rank === 1 ? `🌍 世界纪录！${fmtTime(time)}` : `🌍 全球第 ${r.rank} 名！${fmtTime(time)}`, 'good', 4);
+          else if (!personalBest) this.hud.message(`圈速 ${fmtTime(time)} · 全球最佳仍是 ${fmtTime(r.best)}`, 'info', 3);
+        }).catch((e) => this.hud.message(`上传失败：${(e as Error).message}`, 'bad', 3));
+      }
+    }
     // track best sectors
     this.sectors.forEach((s, i) => {
       if (s != null && (this.bestSectors[i] == null || s < (this.bestSectors[i] as number))) this.bestSectors[i] = s;
@@ -650,7 +706,8 @@ export class RaceScreen implements Screen {
               },
             }, `辅助：${ASSIST_LABELS[l]}`))),
             h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, '圈速榜 / 回放'),
-            this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id) }, '回放最佳圈') : null,
+            this.official ? h('button', { class: 'btn', onclick: () => { this.togglePause(); this.challengeWorldRecord(); } }, '🌍 挑战世界纪录幽灵') : null,
+            this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id, undefined, this.ghostLap!.online) }, '回放幽灵圈') : null,
             h('button', { class: 'btn ghost', onclick: () => toMenu() }, '退出到主菜单'),
           ),
           laps.length ? h('div', { class: 'session' },

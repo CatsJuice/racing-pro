@@ -33,6 +33,8 @@ export class Hud {
   private absEl = h('div', { class: 'assist' }, 'ABS');
   private tcsEl = h('div', { class: 'assist' }, 'TCS');
   private assistEl = h('div', { class: 'assist level' });
+  private ghostEl = h('div', { class: 'hud-ghost' });
+  private onlineEl = h('div', { class: 'hud-online' });
   private tires = [0, 1, 2, 3].map(() => h('div', { class: 'tire' }, h('div', { class: 'tire-load' })));
   private thrBar = h('div', { class: 'pedal-fill thr' });
   private brkBar = h('div', { class: 'pedal-fill brk' });
@@ -66,6 +68,8 @@ export class Hud {
           h('div', null, h('label', null, '上一圈'), this.lastEl),
           h('div', null, h('label', null, '最佳'), this.bestEl),
         ),
+        this.ghostEl,
+        this.onlineEl,
       ),
       h('div', { class: 'hud-tr' }, this.minimap),
       h('div', { class: 'hud-br panel' },
@@ -87,6 +91,14 @@ export class Hud {
       this.msgEl,
       h('div', { class: 'hud-help' }, 'W/S 油门刹车 · A/D 转向 · 空格 手刹 · Q/E 换挡 · 按住 R 时间回退 · Backspace 复位 · C 视角 · G 幽灵车 · M 静音 · Esc 暂停'),
     );
+  }
+
+  setGhostInfo(text: string | null) {
+    this.ghostEl.textContent = text ?? '';
+  }
+
+  setOnline(text: string) {
+    this.onlineEl.textContent = text;
   }
 
   setAssist(label: string) {

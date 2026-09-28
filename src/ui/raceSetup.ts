@@ -5,7 +5,10 @@ import { bestLap, fmtTime, getPrefs, listCars, listTracks, setPrefs } from '../c
 import { toGarage, toMenu, toRace, toTrackEditor } from '../nav';
 import { trackThumb } from '../track/draw2d';
 import { TrackGeometry, type TrackData } from '../track/track';
+import { fetchBoard } from '../core/online';
+import { isOfficial } from '../track/official';
 import { h } from './dom';
+import { playerBadge } from './profile';
 
 export class RaceSetupScreen implements Screen {
   private track!: TrackData;
@@ -28,7 +31,8 @@ export class RaceSetupScreen implements Screen {
       h('div', { class: 'screen-head' },
         h('button', { class: 'btn ghost', onclick: () => toMenu() }, '← 主菜单'),
         h('h1', null, '开始游戏'),
-        h('div', { class: 'dim' }, '无限计时赛：越过起跑线开始计时，每一圈都会记录圈速'),
+        h('div', { class: 'dim grow' }, '无限计时赛：越过起跑线开始计时，每一圈都会记录圈速'),
+        playerBadge(),
       ),
       h('div', { class: 'setup-body' },
         h('section', { class: 'panel' }, h('div', { class: 'row between' }, h('h2', null, '① 选择赛道'), h('button', { class: 'btn small ghost', onclick: () => toTrackEditor() }, '＋ 画新赛道')), this.trackGrid),
@@ -43,17 +47,34 @@ export class RaceSetupScreen implements Screen {
 
   private renderTracks(tracks: TrackData[]) {
     this.trackGrid.innerHTML = '';
-    for (const t of tracks) {
+    const official = tracks.filter((t) => isOfficial(t.id));
+    const local = tracks.filter((t) => !isOfficial(t.id));
+    const sections: [string, TrackData[]][] = [['🌍 官方赛道 · 全球圈速榜', official], ['💾 本地赛道', local]];
+    for (const [title, list] of sections) {
+      if (!list.length) continue;
+      const grid = h('div', { class: 'track-grid' });
+      this.trackGrid.append(h('div', { class: 'track-section' }, h('h3', null, title), grid));
+      for (const t of list) this.trackCard(t, tracks, grid);
+    }
+  }
+
+  private trackCard(t: TrackData, tracks: TrackData[], grid: HTMLElement) {
+    {
       const geo = new TrackGeometry(t);
       const best = h('span', { class: 'mono' }, '…');
+      const record = isOfficial(t.id) ? h('small', null, '🌍 ', h('span', { class: 'mono' }, '…')) : null;
       bestLap(t.id).then((l) => (best.textContent = l ? fmtTime(l.time) : '暂无'));
-      this.trackGrid.append(
+      if (record) fetchBoard(t.id, 1).then((b) => {
+        record.lastChild!.textContent = b.entries[0] ? `${fmtTime(b.entries[0].time)} · ${b.entries[0].name}` : '暂无纪录';
+      }).catch(() => (record.lastChild!.textContent = '离线'));
+      grid.append(
         h('div', { class: `track-card ${t.id === this.track.id ? 'on' : ''}`, onclick: () => { this.track = t; this.renderTracks(tracks); this.renderSummary(); } },
           trackThumb(t, 200, 120),
           h('div', { class: 'tc-body' },
             h('b', null, t.name),
             h('small', { class: 'dim' }, `${(geo.length / 1000).toFixed(2)} km · 宽 ${t.width} m`),
-            h('small', null, '🏆 ', best),
+            h('small', null, '🏆 我的 ', best),
+            record,
           ),
         ),
       );

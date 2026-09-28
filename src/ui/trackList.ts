@@ -15,7 +15,7 @@ export class TrackListScreen implements Screen {
       h('div', { class: 'screen-head' },
         h('button', { class: 'btn ghost', onclick: () => toMenu() }, '← 主菜单'),
         h('h1', null, '赛道管理'),
-        h('div', { class: 'dim' }, '预设赛道可复制后修改；自己画的赛道可随时编辑'),
+        h('div', { class: 'dim' }, '官方赛道有全球圈速榜，可复制为本地赛道后修改；自己画的赛道保存在本地，随时编辑'),
       ),
       h('div', { class: 'panel' }, this.grid),
     );
@@ -39,7 +39,7 @@ export class TrackListScreen implements Screen {
         h('div', { class: 'track-card' },
           trackThumb(t, 260, 150),
           h('div', { class: 'tc-body' },
-            h('div', { class: 'row between' }, h('b', null, t.name), t.builtin ? h('span', { class: 'tag' }, '预设') : null),
+            h('div', { class: 'row between' }, h('b', null, t.name), t.builtin ? h('span', { class: 'official-tag' }, '官方 · 全球榜') : h('span', { class: 'tag' }, '本地')),
             h('small', { class: 'dim' }, `${(geo.length / 1000).toFixed(2)} km · 宽 ${t.width} m · ${t.points.length} 控制点`),
             h('small', null, '🏆 ', best),
             h('div', { class: 'row wrap tc-actions' },
