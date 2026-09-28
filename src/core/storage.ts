@@ -111,6 +111,7 @@ export interface LapRecord {
   frames: Float32Array;
   topSpeed: number;
   assist?: AssistLevel;
+  rewinds?: number;
 }
 
 export type LapSummary = Omit<LapRecord, 'frames'>;

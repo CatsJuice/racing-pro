@@ -7,7 +7,7 @@ export interface Controls {
   shiftDown: boolean;
 }
 
-type Action = 'up' | 'down' | 'left' | 'right' | 'hand' | 'shiftUp' | 'shiftDown' | 'reset' | 'camera' | 'pause' | 'ghost' | 'mute';
+type Action = 'up' | 'down' | 'left' | 'right' | 'hand' | 'shiftUp' | 'shiftDown' | 'reset' | 'rewind' | 'camera' | 'pause' | 'ghost' | 'mute';
 
 const KEYMAP: Record<string, Action> = {
   KeyW: 'up', ArrowUp: 'up',
@@ -17,7 +17,8 @@ const KEYMAP: Record<string, Action> = {
   Space: 'hand',
   KeyE: 'shiftUp', ShiftLeft: 'shiftUp', ShiftRight: 'shiftUp',
   KeyQ: 'shiftDown', ControlLeft: 'shiftDown', ControlRight: 'shiftDown',
-  KeyR: 'reset',
+  KeyR: 'rewind',
+  Backspace: 'reset',
   KeyC: 'camera',
   Escape: 'pause', KeyP: 'pause',
   KeyG: 'ghost',
@@ -53,6 +54,13 @@ export class Input {
 
   private onBlur = () => this.held.clear();
 
+  private padRewind = false;
+
+  /** rewind is a hold action (keyboard R or gamepad Y) */
+  get rewinding() {
+    return this.held.has('rewind') || this.padRewind;
+  }
+
   /** returns true once per key press */
   consume(a: Action) {
     const had = this.pressed.has(a);
@@ -75,7 +83,8 @@ export class Input {
       if (rt > 0.02) throttle = rt;
       if (lt > 0.02) brake = lt;
       if (pad.buttons[0]?.pressed) hand = 1;
-      const edges: [number, Action][] = [[5, 'shiftUp'], [4, 'shiftDown'], [3, 'reset'], [9, 'pause'], [2, 'camera']];
+      const edges: [number, Action][] = [[5, 'shiftUp'], [4, 'shiftDown'], [8, 'reset'], [9, 'pause'], [2, 'camera']];
+      this.padRewind = !!pad.buttons[3]?.pressed;
       for (const [b, a] of edges) {
         const p = !!pad.buttons[b]?.pressed;
         if (p && !this.padPrev[b]) this.pressed.add(a);

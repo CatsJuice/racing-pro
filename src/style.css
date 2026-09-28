@@ -377,3 +377,19 @@ input[type='range'] { accent-color: var(--yellow); height: 22px; }
 .assist-pick { display: flex; flex-direction: column; gap: 4px; max-width: 460px; }
 .assist-pick .row { gap: 12px; }
 .assist-tip { font-size: 12px; }
+
+/* rewind */
+body.rewinding #gl { filter: saturate(0.15) sepia(0.45) hue-rotate(175deg) contrast(1.08) brightness(1.05); }
+.rewind-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 5px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(20, 40, 90, 0.55) 100%);
+  animation: rw-flicker 0.2s infinite alternate;
+}
+.rewind-badge {
+  position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: baseline; gap: 12px; font-size: 34px; font-weight: 800;
+  background: #3b82f6; color: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 4px 24px; box-shadow: var(--shadow);
+}
+.rewind-badge small { font-family: 'JetBrains Mono', monospace; font-size: 20px; }
+@keyframes rw-flicker { from { opacity: 0.85; } to { opacity: 1; } }

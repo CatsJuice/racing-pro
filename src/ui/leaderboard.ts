@@ -84,7 +84,7 @@ export class LeaderboardScreen implements Screen {
       h('td', { class: 'mono dim' }, i === 0 ? '—' : `+${(l.time - best).toFixed(3)}`),
       h('td', null, h('div', { class: 'car-cell' },
         h('span', { class: 'dot', style: { background: l.car.color } }),
-        h('div', null, h('b', null, l.carName), h('small', { class: 'dim' }, `${l.car.drivetrain} · ${Math.round(p.hp)}hp · ${l.car.mass}kg · 辅助${ASSIST_LABELS[l.assist ?? 'pro']}`)),
+        h('div', null, h('b', null, l.carName), h('small', { class: 'dim' }, `${l.car.drivetrain} · ${Math.round(p.hp)}hp · ${l.car.mass}kg · 辅助${ASSIST_LABELS[l.assist ?? 'pro']}${l.rewinds ? ` · ⏪${l.rewinds}` : ''}`)),
       )),
       ...[0, 1, 2].map((k) => h('td', { class: `mono ${Math.abs((l.sectors[k] ?? 0) - bestSec[k]) < 1e-4 ? 'purple' : ''}` }, (l.sectors[k] ?? 0).toFixed(2))),
       h('td', { class: 'mono' }, `${Math.round(l.topSpeed)}`),

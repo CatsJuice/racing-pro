@@ -85,7 +85,7 @@ export class Hud {
         h('div', { class: 'steer-bar' }, this.steerDot),
       ),
       this.msgEl,
-      h('div', { class: 'hud-help' }, 'W/S 油门刹车 · A/D 转向 · 空格 手刹 · Q/E 换挡 · R 复位 · C 视角 · G 幽灵车 · M 静音 · Esc 暂停'),
+      h('div', { class: 'hud-help' }, 'W/S 油门刹车 · A/D 转向 · 空格 手刹 · Q/E 换挡 · 按住 R 时间回退 · Backspace 复位 · C 视角 · G 幽灵车 · M 静音 · Esc 暂停'),
     );
   }
 

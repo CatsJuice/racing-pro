@@ -221,6 +221,29 @@ export class VehiclePhysics {
     }
   }
 
+  private static readonly SCALARS = [
+    'x', 'z', 'heading', 'vx', 'vz', 'yawRate', 'heave', 'heaveV', 'pitch', 'pitchV', 'roll', 'rollV',
+    'gear', 'shiftTimer', 'shiftCooldown', 'rpm', 'reverseTimer', 'tcsCut', 'steerPos', 'steerAngle',
+    'speed', 'vLong', 'vLat', 'throttleOut', 'brakeOut',
+  ] as const;
+  private static readonly WHEEL = ['omega', 'spin', 'steer', 'compression', 'compVel', 'load', 'slipRatio', 'combinedSlip'] as const;
+  static readonly STATE_SIZE = VehiclePhysics.SCALARS.length + 4 * VehiclePhysics.WHEEL.length;
+
+  /** Writes the complete dynamic state into `out` (used by rewind). */
+  saveState(out: Float64Array) {
+    let i = 0;
+    for (const k of VehiclePhysics.SCALARS) out[i++] = this[k];
+    for (const w of this.wheels) for (const k of VehiclePhysics.WHEEL) out[i++] = w[k];
+    return out;
+  }
+
+  loadState(src: Float64Array) {
+    let i = 0;
+    for (const k of VehiclePhysics.SCALARS) (this as any)[k] = src[i++];
+    for (const w of this.wheels) for (const k of VehiclePhysics.WHEEL) (w as any)[k] = src[i++];
+    this.shiftTimer = Math.max(0, this.shiftTimer);
+  }
+
   get speedKmh() {
     return this.speed * 3.6;
   }

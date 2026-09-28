@@ -17,6 +17,28 @@ import { Hud } from './hud';
 import { Input } from './input';
 
 const CAMERA_NAMES = ['追尾', '远距追尾', '车头', '直升机'];
+const REWIND_SECONDS = 20;
+
+/** Everything needed to resume the session from a past moment. */
+interface Snapshot {
+  phys: Float64Array;
+  simTime: number;
+  lastS: number;
+  lapActive: boolean;
+  lapStart: number;
+  lapNo: number;
+  lapValid: boolean;
+  invalidReason: string;
+  sectors: (number | null)[];
+  recCount: number;
+  recordAcc: number;
+  topSpeed: number;
+  offTime: number;
+  wrongWay: number;
+  centreHint: number;
+  wheelHints: number[];
+  camYaw: number;
+}
 
 export class RaceScreen implements Screen {
   private scene = new THREE.Scene();
@@ -62,6 +84,12 @@ export class RaceScreen implements Screen {
   private deltaHint = 0;
   private wrongWay = 0;
   private offTime = 0;
+  // rewind
+  private history: Snapshot[] = [];
+  private rewindCursor = -1;
+  private rewindHold = 0;
+  private rewindsThisLap = 0;
+  private rewindEl: HTMLElement | null = null;
   private ghostEnabled = true;
   private assistLevel: AssistLevel = 'novice';
   private topSpeed = 0;
@@ -179,7 +207,10 @@ export class RaceScreen implements Screen {
       setPrefs({ muted: this.audio.isMuted });
     }
 
-    if (!this.paused) {
+    if (!this.paused && this.input.rewinding && this.history.length > 1) {
+      this.rewindStep(dt);
+    } else if (!this.paused) {
+      if (this.rewindCursor >= 0) this.endRewind();
       if (this.input.consume('reset')) this.resetToTrack();
       const controls = this.input.read(dt);
       const prevT = this.simTime;
@@ -188,6 +219,7 @@ export class RaceScreen implements Screen {
       this.collide();
       this.timing(prevT, dt);
       this.effects(dt);
+      this.pushSnapshot();
       this.audio?.update(this.phys.rpm, this.phys.throttleOut, Math.max(...this.phys.wheels.map((w) => w.combinedSlip)), this.phys.speed);
     }
 
@@ -203,6 +235,88 @@ export class RaceScreen implements Screen {
     this.hud.updateCar(p, dt);
     this.hud.drawMinimap(p, this.ghost?.root.visible ? { x: this.ghost.root.position.x, z: this.ghost.root.position.z } : null);
     this.render();
+  }
+
+  // ------------------------------------------------------------------ rewind (hold R / gamepad Y)
+  private pushSnapshot() {
+    const snap: Snapshot = {
+      phys: this.phys.saveState(new Float64Array(VehiclePhysics.STATE_SIZE)),
+      simTime: this.simTime,
+      lastS: this.lastS,
+      lapActive: this.lapActive,
+      lapStart: this.lapStart,
+      lapNo: this.lapNo,
+      lapValid: this.lapValid,
+      invalidReason: this.invalidReason,
+      sectors: this.sectors.slice(),
+      recCount: this.recorder.count,
+      recordAcc: this.recordAcc,
+      topSpeed: this.topSpeed,
+      offTime: this.offTime,
+      wrongWay: this.wrongWay,
+      centreHint: this.centreHint,
+      wheelHints: this.wheelHints.slice(),
+      camYaw: this.camYaw,
+    };
+    this.history.push(snap);
+    let drop = 0;
+    while (drop < this.history.length - 1 && this.history[drop].simTime < this.simTime - REWIND_SECONDS) drop++;
+    if (drop > 30) this.history.splice(0, drop);
+  }
+
+  private applySnapshot(s: Snapshot) {
+    this.phys.loadState(s.phys);
+    this.simTime = s.simTime;
+    this.lastS = s.lastS;
+    this.lapActive = s.lapActive;
+    this.lapStart = s.lapStart;
+    this.lapNo = s.lapNo;
+    this.lapValid = s.lapValid;
+    this.invalidReason = s.invalidReason;
+    this.sectors = s.sectors.slice();
+    this.recordAcc = s.recordAcc;
+    this.topSpeed = s.topSpeed;
+    this.offTime = s.offTime;
+    this.wrongWay = s.wrongWay;
+    this.centreHint = s.centreHint;
+    this.wheelHints = s.wheelHints.slice();
+    this.camYaw = s.camYaw;
+  }
+
+  private rewindStep(dt: number) {
+    if (this.rewindCursor < 0) {
+      this.rewindCursor = this.history.length - 1;
+      this.rewindHold = 0;
+      this.audio?.setMuted(true);
+      document.body.classList.add('rewinding');
+      this.rewindEl = h('div', { class: 'rewind-overlay' }, h('div', { class: 'rewind-badge' }, '⏪ 时间回退', h('small', null, '')));
+      this.root.append(this.rewindEl);
+    }
+    // accelerates the longer the key is held (1x → 4x)
+    this.rewindHold += dt;
+    const speed = 1 + Math.min(3, this.rewindHold * 1.2);
+    const target = this.history[this.rewindCursor].simTime - dt * speed;
+    while (this.rewindCursor > 0 && this.history[this.rewindCursor].simTime > target) this.rewindCursor--;
+    this.applySnapshot(this.history[this.rewindCursor]);
+    const back = this.history[this.history.length - 1].simTime - this.simTime;
+    const left = this.history[this.rewindCursor].simTime - this.history[0].simTime;
+    const small = this.rewindEl?.querySelector('small');
+    if (small) small.textContent = `-${back.toFixed(1)}s${left < 0.05 ? ' · 已到尽头' : ''}`;
+    this.refreshLapHud();
+  }
+
+  private endRewind() {
+    const snap = this.history[this.rewindCursor];
+    this.history.length = this.rewindCursor + 1;
+    this.recorder.truncate(snap.recCount);
+    this.rewindCursor = -1;
+    if (this.lapActive) this.rewindsThisLap++;
+    this.skids.reset();
+    this.wheelHints = [-1, -1, -1, -1];
+    document.body.classList.remove('rewinding');
+    this.rewindEl?.remove();
+    this.rewindEl = null;
+    if (this.audio) this.audio.setMuted(!!getPrefs().muted);
   }
 
   private render() {
@@ -307,6 +421,11 @@ export class RaceScreen implements Screen {
       }
     }
 
+    this.refreshLapHud();
+  }
+
+  private refreshLapHud() {
+    const s = this.lastS;
     // delta vs best
     let delta: number | null = null;
     const lapT = this.lapActive ? this.simTime - this.lapStart : null;
@@ -364,6 +483,9 @@ export class RaceScreen implements Screen {
     this.sectors = [null, null, null];
     this.recorder.clear();
     this.recordAcc = 0;
+    // rewinding cannot cross the line backwards into a lap that was already scored
+    this.history = [];
+    this.rewindsThisLap = 0;
     this.deltaHint = 0;
     this.topSpeed = 0;
     this.record(this.simTime - t, this.track.geo.project(this.phys.x, this.phys.z, this.centreHint).s);
@@ -396,6 +518,7 @@ export class RaceScreen implements Screen {
       frames,
       topSpeed: this.topSpeed * 3.6,
       assist: this.assistLevel,
+      rewinds: this.rewindsThisLap,
     };
     const prevBest = this.bestTime;
     submitLap(lap).then((rank) => {
@@ -535,6 +658,7 @@ export class RaceScreen implements Screen {
   }
 
   unmount() {
+    document.body.classList.remove('rewinding');
     this.input.dispose();
     this.audio?.dispose();
     this.track?.dispose();

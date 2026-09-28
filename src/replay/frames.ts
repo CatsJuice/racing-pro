@@ -13,6 +13,10 @@ export class FrameRecorder {
     for (let i = 0; i < FRAME_STRIDE; i++) this.data.push(values[i] ?? 0);
   }
 
+  truncate(frames: number) {
+    this.data.length = Math.min(this.data.length, frames * FRAME_STRIDE);
+  }
+
   get count() {
     return this.data.length / FRAME_STRIDE;
   }
