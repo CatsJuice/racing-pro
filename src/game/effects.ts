@@ -123,16 +123,17 @@ export class FallingLeaves {
   private p = new THREE.Vector3();
   private t = 0;
 
-  constructor(count = 260, private range = 45) {
+  constructor(count = 110, private range = 45) {
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute([0.18, 0, 0, 0, 0.11, 0, -0.18, 0, 0, 0, -0.11, 0], 3));
+    // small petal (sakura-like) rather than big leaves — reads as ambience, not noise
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([0.1, 0, 0, 0, 0.06, 0, -0.1, 0, 0, 0, -0.06, 0], 3));
     geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
     geo.setIndex([0, 1, 2, 0, 2, 3]);
     const mat = toon('#ffffff', { side: THREE.DoubleSide });
     this.mesh = new THREE.InstancedMesh(geo, mat, count);
     this.mesh.frustumCulled = false;
     this.mesh.userData.noOutline = true;
-    const palette = ['#ff7a2e', '#ff5f9e', '#ffc933', '#e8342e', '#ffa23a'].map((c) => new THREE.Color(c));
+    const palette = ['#ffc4d8', '#ffdbe7', '#ffb3cb', '#fff0c2'].map((c) => new THREE.Color(c));
     for (let i = 0; i < count; i++) {
       this.leaves.push({
         x: (Math.random() - 0.5) * range * 2, y: Math.random() * 14, z: (Math.random() - 0.5) * range * 2,

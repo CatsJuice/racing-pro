@@ -57,32 +57,46 @@ let texCache: Record<string, THREE.Texture> | null = null;
 function textures() {
   if (texCache) return texCache;
   texCache = {
+    // Clean slate asphalt: fine low-contrast aggregate, a faint rubbered racing line and crisp
+    // white track-limit lines. u runs across the road, v along it.
     road: canvasTexture(512, 512, (c) => {
-      c.fillStyle = '#857a8e';
+      c.fillStyle = '#737a8e';
       c.fillRect(0, 0, 512, 512);
-      blotches(c, 512, 512, 26, ['rgba(80,64,96,0.35)', 'rgba(140,118,140,0.25)'], 30, 90, 3);
-      speckle(c, 512, 512, 9000, ['#7a6f84', '#90849a', '#70667a', '#9c90a6', '#887c92'], 2.2, 5);
-      // rubbered-in racing line, slightly darker in the middle third
+      blotches(c, 512, 512, 18, ['rgba(60,66,84,0.12)', 'rgba(150,156,176,0.10)'], 50, 130, 3);
+      speckle(c, 512, 512, 14000, ['#6c7387', '#7a8195', '#687083', '#80879a'], 1.3, 5);
       const g = c.createLinearGradient(0, 0, 512, 0);
-      g.addColorStop(0.28, 'rgba(30,32,38,0)');
-      g.addColorStop(0.5, 'rgba(40,28,52,0.2)');
-      g.addColorStop(0.72, 'rgba(30,32,38,0)');
+      g.addColorStop(0.3, 'rgba(24,26,36,0)');
+      g.addColorStop(0.5, 'rgba(24,26,36,0.13)');
+      g.addColorStop(0.7, 'rgba(24,26,36,0)');
       c.fillStyle = g;
       c.fillRect(0, 0, 512, 512);
-      // hairline cracks
-      c.strokeStyle = 'rgba(40,42,48,0.35)';
-      c.lineWidth = 1.2;
-      const r = rng(8);
-      for (let i = 0; i < 7; i++) {
-        let x = r.next() * 512, y = r.next() * 512;
-        c.beginPath();
-        c.moveTo(x, y);
-        for (let k = 0; k < 6; k++) { x += (r.next() - 0.5) * 40; y += r.next() * 30; c.lineTo(x, y); }
-        c.stroke();
-      }
-      c.fillStyle = '#f7f7f2';
-      c.fillRect(10, 0, 12, 512);
-      c.fillRect(490, 0, 12, 512);
+      // slight darkening towards the edges (dust / shadow of the verge)
+      const e = c.createLinearGradient(0, 0, 512, 0);
+      e.addColorStop(0, 'rgba(30,34,48,0.18)');
+      e.addColorStop(0.08, 'rgba(30,34,48,0)');
+      e.addColorStop(0.92, 'rgba(30,34,48,0)');
+      e.addColorStop(1, 'rgba(30,34,48,0.18)');
+      c.fillStyle = e;
+      c.fillRect(0, 0, 512, 512);
+      c.fillStyle = '#f4f5f8';
+      c.fillRect(8, 0, 10, 512);
+      c.fillRect(494, 0, 10, 512);
+    }),
+    // verge: darker, tightly mown grass next to the tarmac, with a soft contact shadow at the edge
+    verge: canvasTexture(128, 256, (c) => {
+      // darker at the tarmac, blending into the lawn colour at the outer edge
+      const b = c.createLinearGradient(0, 0, 128, 0);
+      b.addColorStop(0, '#68a04c');
+      b.addColorStop(0.6, '#74a952');
+      b.addColorStop(1, '#80b257');
+      c.fillStyle = b;
+      c.fillRect(0, 0, 128, 256);
+      speckle(c, 128, 256, 1800, ['rgba(90,140,70,0.6)', 'rgba(130,175,95,0.5)'], 1.4, 31);
+      const s = c.createLinearGradient(0, 0, 128, 0);
+      s.addColorStop(0, 'rgba(20,40,20,0.35)');
+      s.addColorStop(0.18, 'rgba(20,40,20,0)');
+      c.fillStyle = s;
+      c.fillRect(0, 0, 128, 256);
     }),
     kerb: canvasTexture(64, 128, (c) => {
       c.fillStyle = '#e63946';
@@ -94,16 +108,22 @@ function textures() {
       c.fillRect(0, 124, 64, 4);
     }),
     gravel: canvasTexture(256, 256, (c) => {
-      c.fillStyle = '#f0a15a';
+      c.fillStyle = '#e9cf9f';
       c.fillRect(0, 0, 256, 256);
-      blotches(c, 256, 256, 14, ['rgba(220,120,70,0.45)', 'rgba(255,200,130,0.4)'], 20, 60, 12);
-      speckle(c, 256, 256, 5000, ['#e08a4a', '#ffc080', '#d4783c', '#f5ab66', '#c56a3a'], 2.4, 13);
+      blotches(c, 256, 256, 12, ['rgba(214,180,128,0.35)', 'rgba(250,228,186,0.35)'], 20, 60, 12);
+      speckle(c, 256, 256, 7000, ['#dcbf8c', '#f3dcae', '#cfb07c', '#e6c894', '#bfa072'], 1.6, 13);
     }),
+    // One 40 m tile of lawn: four mowing stripes, gentle large-scale tone variation and
+    // fine blade speckle — no high-contrast confetti.
     grass: canvasTexture(512, 512, (c) => {
-      c.fillStyle = '#9db43f';
+      c.fillStyle = '#80b257';
       c.fillRect(0, 0, 512, 512);
-      blotches(c, 512, 512, 34, ['rgba(120,160,50,0.5)', 'rgba(210,190,70,0.45)', 'rgba(150,175,55,0.45)', 'rgba(235,150,70,0.3)'], 40, 140, 21);
-      speckle(c, 512, 512, 5000, ['#8aa53a', '#b8c24a', '#7b9a34', '#d2b848', '#e0904a'], 3, 22);
+      blotches(c, 512, 512, 22, ['rgba(100,150,70,0.3)', 'rgba(160,190,100,0.22)', 'rgba(90,140,80,0.22)'], 60, 170, 21);
+      for (let k = 0; k < 4; k++) {
+        c.fillStyle = k % 2 ? 'rgba(255,255,220,0.055)' : 'rgba(20,60,30,0.055)';
+        c.fillRect(k * 128, 0, 128, 512);
+      }
+      speckle(c, 512, 512, 9000, ['#76a74f', '#8dbd62', '#6f9e4b', '#96c46a'], 1.5, 22);
     }),
     checker: canvasTexture(128, 32, (c) => {
       for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) {
@@ -294,6 +314,11 @@ export class TrackScene {
     road.userData.noOutline = true;
     this.group.add(road);
     for (const side of [1, -1]) {
+      // mown verge band framing the tarmac (kerbs and gravel draw over it)
+      const verge = new THREE.Mesh(this.ribbon(side * hw, side * (hw + 2.4), 0.008, () => true, 6), this.flatMat(T.verge, -1));
+      verge.receiveShadow = true;
+      verge.userData.noOutline = true;
+      this.group.add(verge);
       // raised, rounded kerb profile
       const kerb = new THREE.Mesh(
         this.ribbon(side * (hw - 0.05), side * (hw + KERB_W), 0.02, (i) => !!this.kerb[i], 4, [0, 0.05, 0.075, 0.07, 0.04, 0]),
@@ -658,7 +683,23 @@ export class TrackScene {
         occ.push({ x, z, r: 1.6 });
       }
     }
-    for (let k = 0; k < 260; k++) {
+    // a loose tree belt around the whole venue frames the horizon from any camera
+    {
+      const bcx = (b.minX + b.maxX) / 2, bcz = (b.minZ + b.maxZ) / 2;
+      const rx = (b.maxX - b.minX) / 2 + 170, rz = (b.maxZ - b.minZ) / 2 + 170;
+      const n = Math.round((Math.PI * (rx + rz)) / 7);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2;
+        const depth = R.range(0, 60);
+        const x = bcx + Math.cos(a) * (rx + depth) + R.range(-4, 4), z = bcz + Math.sin(a) * (rz + depth) + R.range(-4, 4);
+        if (!this.free(x, z, 2.5, outside + 20)) continue;
+        const roll = R.next();
+        const kind = roll < 0.45 ? 'tree_green' : roll < 0.65 ? 'tree_pine2' : roll < 0.8 ? 'tree_yellow' : roll < 0.92 ? 'tree_orange' : 'tree_pink';
+        lists[kind].push({ x, z, rot: R.range(0, Math.PI * 2), scale: R.range(1.0, 1.7) });
+        occ.push({ x, z, r: 2 });
+      }
+    }
+    for (let k = 0; k < 360; k++) {
       const x = R.range(b.minX - margin, b.maxX + margin), z = R.range(b.minZ - margin, b.maxZ + margin);
       const roll = R.next();
       const kind = roll < 0.2 ? 'tree_orange' : roll < 0.32 ? 'tree_pink' : roll < 0.42 ? 'tree_yellow' : roll < 0.6 ? 'bush_pink' : roll < 0.76 ? 'bush_yellow' : roll < 0.86 ? 'tree_red' : roll < 0.93 ? 'basalt' : 'rock';
@@ -670,16 +711,23 @@ export class TrackScene {
 
     // grass clumps & flowers close to the track (cheap detail near the camera)
     const tufts: Placement[] = [], flowers: Placement[] = [], tall: Placement[] = [], greenTufts: Placement[] = [];
-    for (let k = 0; k < Math.min(9000, g.length * 4.5); k++) {
+    // Clustered rather than uniformly sprinkled, kept off the mown verge, mostly green: a
+    // cleaner read of the track edge with occasional flower patches for colour.
+    const patches = Math.min(2600, Math.round(g.length * 1.1));
+    for (let k = 0; k < patches; k++) {
       const i = Math.floor(R.next() * g.count);
       const side = R.next() > 0.5 ? 1 : -1;
-      const lat = hw + KERB_W + 1.2 + Math.pow(R.next(), 1.8) * 55; // denser close to the tarmac
-      if (this.gravel[i] === side && lat < hw + KERB_W + GRAVEL_W + 1) continue;
-      const p = this.at(i, lat * side);
-      if (g.distanceTo(p.x, p.z) < hw + KERB_W + 1) continue;
+      const lat = hw + 6 + Math.pow(R.next(), 1.4) * 60;
+      if (this.gravel[i] === side && lat < hw + KERB_W + GRAVEL_W + 2) continue;
+      const c0 = this.at(i, lat * side);
       const roll = R.next();
-      const list = roll < 0.6 ? tufts : roll < 0.78 ? greenTufts : roll < 0.9 ? tall : flowers;
-      list.push({ x: p.x, z: p.z, rot: R.range(0, 6.28), scale: R.range(0.8, 1.6) });
+      const list = roll < 0.62 ? greenTufts : roll < 0.72 ? tufts : roll < 0.78 ? tall : flowers;
+      const n = list === flowers ? 5 : 3;
+      for (let m = 0; m < n; m++) {
+        const x = c0.x + R.range(-2.2, 2.2), z = c0.z + R.range(-2.2, 2.2);
+        if (g.distanceTo(x, z) < hw + 5) continue;
+        list.push({ x, z, rot: R.range(0, 6.28), scale: R.range(0.7, 1.3) });
+      }
     }
     this.instanced('grass_clump', tufts, false);
     this.instanced('grass_clump_green', greenTufts, false);
