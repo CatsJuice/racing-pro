@@ -1,3 +1,4 @@
+import { t, t as t_, trackName } from '../i18n';
 import type { Screen } from '../app';
 import { bestLap, deleteTrack, fmtTime, getPrefs, listCars, listTracks, saveTrack, setPrefs, uid } from '../core/storage';
 import { toLeaderboard, toMenu, toRace, toTrackEditor } from '../nav';
@@ -13,9 +14,9 @@ export class TrackListScreen implements Screen {
     this.grid = h('div', { class: 'track-grid large' });
     root.append(
       h('div', { class: 'screen-head' },
-        h('button', { class: 'btn ghost', onclick: () => toMenu() }, '← 主菜单'),
-        h('h1', null, '赛道管理'),
-        h('div', { class: 'dim' }, '官方赛道有全球圈速榜，可复制为本地赛道后修改；自己画的赛道保存在本地，随时编辑'),
+        h('button', { class: 'btn ghost', onclick: () => toMenu() }, t('common.mainMenu')),
+        h('h1', null, t('tracks.title')),
+        h('div', { class: 'dim' }, t('tracks.subtitle')),
       ),
       h('div', { class: 'panel' }, this.grid),
     );
@@ -27,27 +28,27 @@ export class TrackListScreen implements Screen {
     this.grid.append(
       h('div', { class: 'track-card new', onclick: () => toTrackEditor() },
         h('div', { class: 'plus' }, '＋'),
-        h('b', null, '画一条新赛道'),
-        h('small', { class: 'dim' }, '自由手绘或逐点编辑'),
+        h('b', null, t('tracks.new')),
+        h('small', { class: 'dim' }, t('tracks.newSub')),
       ),
     );
-    for (const t of listTracks()) {
-      const geo = new TrackGeometry(t);
+    for (const tr of listTracks()) {
+      const geo = new TrackGeometry(tr);
       const best = h('span', { class: 'mono' }, '…');
-      bestLap(t.id).then((l) => (best.textContent = l ? `${fmtTime(l.time)} · ${l.carName}` : '暂无记录'));
+      bestLap(tr.id).then((l) => (best.textContent = l ? `${fmtTime(l.time)} · ${l.carName}` : t('tracks.noRecord')));
       this.grid.append(
         h('div', { class: 'track-card' },
-          trackThumb(t, 260, 150),
+          trackThumb(tr, 260, 150),
           h('div', { class: 'tc-body' },
-            h('div', { class: 'row between' }, h('b', null, t.name), t.builtin ? h('span', { class: 'official-tag' }, '官方 · 全球榜') : h('span', { class: 'tag' }, '本地')),
-            h('small', { class: 'dim' }, `${(geo.length / 1000).toFixed(2)} km · 宽 ${t.width} m · ${t.points.length} 控制点`),
+            h('div', { class: 'row between' }, h('b', null, trackName(tr)), tr.builtin ? h('span', { class: 'official-tag' }, t('tracks.officialTag')) : h('span', { class: 'tag' }, t('tracks.localTag'))),
+            h('small', { class: 'dim' }, t('tracks.meta', { km: (geo.length / 1000).toFixed(2), w: tr.width, n: tr.points.length })),
             h('small', null, '🏆 ', best),
             h('div', { class: 'row wrap tc-actions' },
-              h('button', { class: 'btn small', onclick: () => this.edit(t) }, t.builtin ? '复制并编辑' : '编辑'),
-              !t.builtin ? h('button', { class: 'btn small ghost', onclick: () => this.copy(t) }, '复制') : null,
-              h('button', { class: 'btn small ghost', onclick: () => toLeaderboard(t.id) }, '圈速榜'),
-              h('button', { class: 'btn small go', onclick: () => this.drive(t) }, '开跑 ▶'),
-              !t.builtin ? h('button', { class: 'btn small danger', onclick: () => this.remove(t) }, '删除') : null,
+              h('button', { class: 'btn small', onclick: () => this.edit(tr) }, tr.builtin ? t('tracks.copyEdit') : t('common.edit')),
+              !tr.builtin ? h('button', { class: 'btn small ghost', onclick: () => this.copy(tr) }, t('common.copy')) : null,
+              h('button', { class: 'btn small ghost', onclick: () => toLeaderboard(tr.id) }, t('tracks.board')),
+              h('button', { class: 'btn small go', onclick: () => this.drive(tr) }, t('tracks.drive')),
+              !tr.builtin ? h('button', { class: 'btn small danger', onclick: () => this.remove(tr) }, t('common.delete')) : null,
             ),
           ),
         ),
@@ -57,19 +58,19 @@ export class TrackListScreen implements Screen {
 
   private edit(t: TrackData) {
     if (t.builtin) {
-      const copy: TrackData = { ...t, id: uid('trk-'), name: `${t.name}（改）`, builtin: false, points: t.points.map((p) => ({ ...p })) };
+      const copy: TrackData = { ...t, id: uid('trk-'), name: t_('tracks.modSuffix', { name: trackName(t) }), builtin: false, points: t.points.map((p) => ({ ...p })) };
       toTrackEditor(copy);
     } else toTrackEditor(t);
   }
 
   private copy(t: TrackData) {
-    saveTrack({ ...t, id: uid('trk-'), name: `${t.name} 副本`, builtin: false, points: t.points.map((p) => ({ ...p })) });
-    toast('已复制', 'good');
+    saveTrack({ ...t, id: uid('trk-'), name: t_('tracks.copySuffix', { name: t.name }), builtin: false, points: t.points.map((p) => ({ ...p })) });
+    toast(t_('tracks.copied'), 'good');
     this.render();
   }
 
   private async remove(t: TrackData) {
-    if (!(await confirmDialog(`删除赛道「${t.name}」？该赛道的圈速记录也会被删除。`, '删除'))) return;
+    if (!(await confirmDialog(t_('tracks.deleteConfirm', { name: trackName(t) }), t_('common.delete')))) return;
     deleteTrack(t.id);
     this.render();
   }

@@ -1,3 +1,5 @@
+import { carName, t } from '../i18n';
+import { langPicker } from './langPicker';
 import type { Screen } from '../app';
 import { getCar, getPrefs, listCars } from '../core/storage';
 import { toGarage, toLeaderboard, toRaceSetup, toTracks } from '../nav';
@@ -25,16 +27,16 @@ export class MenuScreen implements Screen {
     root.append(
       h('div', { class: 'menu-left' },
         h('div', { class: 'logo' }, h('span', { class: 'l1' }, 'RACING'), h('span', { class: 'l2' }, 'PRO')),
-        h('div', { class: 'tagline' }, '画一条赛道 · 调一台赛车 · 刷一个圈速'),
+        h('div', { class: 'tagline' }, t('menu.tagline')),
         h('div', { class: 'menu-items' },
-          item('🏁', '开始游戏', '选择赛道与赛车，无限计时赛', () => toRaceSetup(), true),
-          item('🛣️', '赛道管理', '自己画赛道，编辑与管理', () => toTracks()),
-          item('🔧', '赛车管理', '车库 · 调校 50+ 项参数', () => toGarage()),
-          item('🏆', '圈速榜', '官方赛道全球排行 · 本地记录 · 回放', () => toLeaderboard()),
+          item('🏁', t('menu.start'), t('menu.startSub'), () => toRaceSetup(), true),
+          item('🛣️', t('menu.tracks'), t('menu.tracksSub'), () => toTracks()),
+          item('🔧', t('menu.garage'), t('menu.garageSub'), () => toGarage()),
+          item('🏆', t('menu.board'), t('menu.boardSub'), () => toLeaderboard()),
         ),
-        h('div', { class: 'menu-foot dim' }, `当前赛车：${car.name}`),
+        h('div', { class: 'menu-foot dim' }, t('menu.currentCar', { car: carName(car) })),
       ),
-      h('div', { class: 'menu-top-right' }, playerBadge()),
+      h('div', { class: 'menu-top-right row' }, langPicker(), playerBadge()),
     );
     if (!identity() && !promptedThisSession) {
       promptedThisSession = true;

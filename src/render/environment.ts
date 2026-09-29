@@ -30,12 +30,13 @@ const KEYS: Key[] = [
   { h: 24, top: '#080c26', horizon: '#2a2750', sun: '#aab8ff', sunI: 0.8, hemiSky: '#525a90', hemiGround: '#2c2838', hemiI: 1.0, grade: '#dde0f2' },
 ];
 
-export const TIME_PRESETS: { label: string; h: number }[] = [
-  { label: '清晨', h: 6.4 },
-  { label: '上午', h: 9.5 },
-  { label: '正午', h: 12.5 },
-  { label: '黄昏', h: 17.8 },
-  { label: '夜晚', h: 22 },
+/** `key` is an i18n key under `time.*` */
+export const TIME_PRESETS: { key: 'time.dawn' | 'time.morning' | 'time.noon' | 'time.dusk' | 'time.night'; h: number }[] = [
+  { key: 'time.dawn', h: 6.4 },
+  { key: 'time.morning', h: 9.5 },
+  { key: 'time.noon', h: 12.5 },
+  { key: 'time.dusk', h: 17.8 },
+  { key: 'time.night', h: 22 },
 ];
 
 const tmpA = new THREE.Color(), tmpB = new THREE.Color();

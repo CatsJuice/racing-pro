@@ -1,12 +1,13 @@
+import { t } from '../i18n';
 import { getPrefs, setPrefs } from '../core/storage';
 import { hourLabel, TIME_PRESETS, type Environment } from '../render/environment';
 import { getStage } from '../render/toon';
 import { h } from './dom';
 
-const FLOWS: { label: string; v: number }[] = [
-  { label: '静止', v: 0 },
-  { label: '慢 (1分钟=1小时)', v: 1 / 60 },
-  { label: '快 (10秒=1小时)', v: 1 / 10 },
+const FLOWS: { key: 'time.flowOff' | 'time.flowSlow' | 'time.flowFast'; v: number }[] = [
+  { key: 'time.flowOff', v: 0 },
+  { key: 'time.flowSlow', v: 1 / 60 },
+  { key: 'time.flowFast', v: 1 / 10 },
 ];
 
 /**
@@ -29,12 +30,12 @@ export function timeControls(env?: Environment): HTMLElement {
   };
   setHour(hour);
   slider.addEventListener('input', () => setHour(parseFloat(slider.value)));
-  const presets = h('div', { class: 'chips wrap' }, TIME_PRESETS.map((p) => h('button', { class: 'chip', onclick: () => setHour(p.h) }, p.label)));
+  const presets = h('div', { class: 'chips wrap' }, TIME_PRESETS.map((p) => h('button', { class: 'chip', onclick: () => setHour(p.h) }, t(p.key))));
   const flow = h('select', { class: 'select', onchange: (e: Event) => {
     const v = parseFloat((e.target as HTMLSelectElement).value);
     if (env) env.speed = v;
     setPrefs({ timeFlow: v });
-  } }, FLOWS.map((f) => h('option', { value: String(f.v), selected: Math.abs((prefs.timeFlow ?? 0) - f.v) < 1e-6 }, f.label)));
+  } }, FLOWS.map((f) => h('option', { value: String(f.v), selected: Math.abs((prefs.timeFlow ?? 0) - f.v) < 1e-6 }, t(f.key))));
   const dof = h('input', { type: 'checkbox', checked: prefs.dof !== false, onchange: (e: Event) => {
     const on = (e.target as HTMLInputElement).checked;
     setPrefs({ dof: on });
@@ -53,10 +54,10 @@ export function timeControls(env?: Environment): HTMLElement {
     requestAnimationFrame(tick);
   }
   return h('div', { class: 'time-controls' },
-    h('div', { class: 'row between' }, h('span', null, icon, ' 时间'), label),
+    h('div', { class: 'row between' }, h('span', null, icon, ' ', t('time.title')), label),
     slider,
     presets,
-    h('div', { class: 'row between' }, h('span', { class: 'dim small' }, '时间流逝'), flow),
-    h('label', { class: 'row small dim' }, dof, '景深效果（仅俯视/回放视角）'),
+    h('div', { class: 'row between' }, h('span', { class: 'dim small' }, t('time.flow')), flow),
+    h('label', { class: 'row small dim' }, dof, t('time.dof')),
   );
 }

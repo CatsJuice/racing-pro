@@ -2,6 +2,7 @@ import type { AssistLevel } from '../car/physics';
 import { normalizeSetup, type CarSetup } from '../car/setup';
 import { OFFICIAL_TRACKS, trackHash } from '../track/official';
 import { base64ToBytes, packFrames, unpackFrames } from './lapFormat';
+import { t, tx } from '../i18n';
 import type { LapRecord } from './storage';
 
 const ID_KEY = 'racing-pro.identity';
@@ -71,10 +72,11 @@ async function api<T>(path: string, init: RequestInit = {}, withAuth = false): P
   try {
     res = await fetch(path, { ...init, headers });
   } catch {
-    throw new ApiError(0, '无法连接服务器');
+    throw new ApiError(0, t('err.network'));
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, (data as any).error ?? `请求失败 (${res.status})`);
+  const code = (data as any).error as string | undefined;
+  if (!res.ok) throw new ApiError(res.status, code ? tx(`err.${code}`, code) : t('err.request', { status: res.status }));
   return data as T;
 }
 
@@ -111,8 +113,8 @@ export interface SubmitResult {
 
 export async function submitOnline(lap: LapRecord): Promise<SubmitResult> {
   const hash = officialHash(lap.trackId);
-  if (!hash) throw new ApiError(400, '不是官方赛道');
-  if (!identity()) throw new ApiError(401, '请先设置用户名');
+  if (!hash) throw new ApiError(400, t('err.notOfficial'));
+  if (!identity()) throw new ApiError(401, t('err.needName'));
   const { id: _id, builtin: _b, ...car } = lap.car;
   void _id; void _b;
   return api<SubmitResult>('/api/laps', {
@@ -165,7 +167,7 @@ export function fetchOnlineLap(lapId: string): Promise<LapRecord> {
   return p;
 }
 
-const RANDOM_NAMES = ['闪电', '漂移王', '弯道狂魔', '油门到底', '极速', '赛道幽灵', '晚刹车', '内线王', '圈速猎人', '橡胶燃烧者'];
 export function randomName() {
-  return RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)] + Math.floor(100 + Math.random() * 900);
+  const pool = t('names.pool').split(',');
+  return pool[Math.floor(Math.random() * pool.length)].trim() + Math.floor(100 + Math.random() * 900);
 }

@@ -238,17 +238,19 @@ export class TrackGeometry {
 
 export interface TrackIssue {
   level: 'error' | 'warn';
-  msg: string;
+  /** i18n key (`val.*`) and its parameters */
+  code: 'val.minPoints' | 'val.tooShort' | 'val.crossing' | 'val.tooClose' | 'val.tight';
+  params?: Record<string, string | number>;
 }
 
 export function validateTrack(data: TrackData): TrackIssue[] {
   const issues: TrackIssue[] = [];
   if (data.points.length < 4) {
-    issues.push({ level: 'error', msg: '至少需要 4 个控制点才能形成闭合赛道' });
+    issues.push({ level: 'error', code: 'val.minPoints' });
     return issues;
   }
   const g = new TrackGeometry(data);
-  if (g.length < 300) issues.push({ level: 'error', msg: `赛道太短（${g.length.toFixed(0)}m），至少需要 300m` });
+  if (g.length < 300) issues.push({ level: 'error', code: 'val.tooShort', params: { len: g.length.toFixed(0) } });
   // self intersection (coarse)
   const S = g.samples;
   const step = 4;
@@ -262,7 +264,7 @@ export function validateTrack(data: TrackData): TrackIssue[] {
       if (segIntersect(a, b, c, d)) { crossings++; break; }
     }
   }
-  if (crossings) issues.push({ level: 'warn', msg: '赛道存在交叉（平面交叉，没有立交桥）' });
+  if (crossings) issues.push({ level: 'warn', code: 'val.crossing' });
   // too close parallel sections
   let close = false;
   for (let i = 0; i < S.length && !close; i += 6) {
@@ -273,9 +275,9 @@ export function validateTrack(data: TrackData): TrackIssue[] {
       if (Math.hypot(S[i].x - S[j].x, S[i].z - S[j].z) < g.width * 1.05) { close = true; break; }
     }
   }
-  if (close && !crossings) issues.push({ level: 'warn', msg: '有两段赛道挨得太近，路面会重叠' });
+  if (close && !crossings) issues.push({ level: 'warn', code: 'val.tooClose' });
   const minR = 1 / Math.max(1e-6, Math.max(...S.map((s) => Math.abs(s.curv))));
-  if (minR < g.width * 0.6) issues.push({ level: 'warn', msg: `最小弯道半径 ${minR.toFixed(1)}m，过急的弯会导致路面折叠` });
+  if (minR < g.width * 0.6) issues.push({ level: 'warn', code: 'val.tight', params: { r: minR.toFixed(1) } });
   return issues;
 }
 

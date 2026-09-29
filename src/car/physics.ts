@@ -55,7 +55,7 @@ export const ASSISTS: Record<AssistLevel, DrivingAssist> = {
   pro: { steerLimit: false, counterSteer: 0, stability: 0, tcs: false, abs: false },
 };
 
-export const ASSIST_LABELS: Record<AssistLevel, string> = { novice: '新手', standard: '标准', pro: '专业' };
+export const ASSIST_LEVELS: AssistLevel[] = ['novice', 'standard', 'pro'];
 
 const ASPHALT: Surface = { grip: 1, rolling: 0, kind: 'asphalt' };
 

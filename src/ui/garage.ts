@@ -1,3 +1,4 @@
+import { carName, t, trackName, tx } from '../i18n';
 import type { Screen } from '../app';
 import { simulatePerformance } from '../car/physics';
 import { BUILTIN_CARS, cloneSetup, engineTorqueCurve, gearRatios, PARAM_GROUPS, peakPower, type CarSetup, type ParamMeta } from '../car/setup';
@@ -33,14 +34,14 @@ export class GarageScreen implements Screen {
     this.dirtyEl = h('span', { class: 'dirty' });
     root.append(
       h('div', { class: 'garage-left panel' },
-        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.leave(() => toMenu()) }, '← 主菜单'), h('h2', null, '车库')),
+        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.leave(() => toMenu()) }, t('common.mainMenu')), h('h2', null, t('garage.title'))),
         this.listEl,
-        h('button', { class: 'btn primary block', onclick: () => this.newCar() }, '＋ 基于当前新建赛车'),
+        h('button', { class: 'btn primary block', onclick: () => this.newCar() }, t('garage.new')),
       ),
       h('div', { class: 'garage-right panel' }, this.panelEl),
       h('div', { class: 'garage-bottom panel' },
         h('div', { class: 'stats-wrap' }, this.statsEl),
-        h('div', { class: 'curve-wrap' }, h('div', { class: 'curve-title' }, '扭矩 / 功率曲线'), this.curveCv),
+        h('div', { class: 'curve-wrap' }, h('div', { class: 'curve-title' }, t('garage.curve')), this.curveCv),
       ),
     );
     this.select(pick);
@@ -51,13 +52,13 @@ export class GarageScreen implements Screen {
   }
 
   private async leave(fn: () => void) {
-    if (this.dirty && !(await confirmDialog('有未保存的修改，确定离开吗？', '离开'))) return;
+    if (this.dirty && !(await confirmDialog(t('common.unsavedLeave'), t('common.leave')))) return;
     fn();
   }
 
   private async select(c: CarSetup) {
     if (this.current && this.dirty && c.id !== this.current.id) {
-      if (!(await confirmDialog('有未保存的修改，切换会丢失，确定吗？', '切换'))) return;
+      if (!(await confirmDialog(t('garage.switchUnsaved'), t('common.switch')))) return;
     }
     this.current = cloneSetup(c);
     this.original = JSON.stringify(this.current);
@@ -76,10 +77,10 @@ export class GarageScreen implements Screen {
         h('div', { class: `car-card ${c.id === this.current?.id ? 'on' : ''}`, onclick: () => this.select(c) },
           h('div', { class: 'swatch', style: { background: `linear-gradient(135deg, ${c.color} 60%, ${c.accent} 60%)` } }),
           h('div', { class: 'cc-text' },
-            h('b', null, c.name),
+            h('b', null, carName(c)),
             h('small', null, `${c.drivetrain} · ${Math.round(p.hp)} hp · ${c.mass} kg`),
           ),
-          c.builtin ? h('span', { class: 'tag' }, '预设') : null,
+          c.builtin ? h('span', { class: 'tag' }, t('common.preset')) : null,
         ),
       );
     }
@@ -90,34 +91,34 @@ export class GarageScreen implements Screen {
     const el = this.panelEl;
     el.innerHTML = '';
     const tabs = h('div', { class: 'tabs' },
-      PARAM_GROUPS.map((g) => h('button', { class: `tab ${g.id === this.tab ? 'on' : ''}`, title: g.label, onclick: () => { this.tab = g.id; this.renderPanel(); } }, h('span', null, g.icon), h('small', null, g.label))),
+      PARAM_GROUPS.map((g) => h('button', { class: `tab ${g.id === this.tab ? 'on' : ''}`, title: tx(`g.${g.id}`, g.label), onclick: () => { this.tab = g.id; this.renderPanel(); } }, h('span', null, g.icon), h('small', null, tx(`g.${g.id}`, g.label)))),
     );
     const group = PARAM_GROUPS.find((g) => g.id === this.tab)!;
     const fields = h('div', { class: 'fields' }, group.params.map((m) => this.field(m)));
     const tracks = listTracks();
-    const trackSel = h('select', { class: 'select' }, tracks.map((t) => h('option', { value: t.id, selected: t.id === getPrefs().lastTrack }, t.name)));
+    const trackSel = h('select', { class: 'select' }, tracks.map((tr) => h('option', { value: tr.id, selected: tr.id === getPrefs().lastTrack }, trackName(tr))));
     el.append(
       h('div', { class: 'row between' },
-        h('div', null, h('h2', null, c.name, this.dirtyEl), h('div', { class: 'dim small' }, c.builtin ? '预设赛车：保存时会另存为新车' : '自定义赛车')),
+        h('div', null, h('h2', null, carName(c), this.dirtyEl), h('div', { class: 'dim small' }, c.builtin ? t('garage.presetNote') : t('garage.custom'))),
       ),
       tabs,
-      h('h3', { class: 'group-title' }, `${group.icon} ${group.label}`),
+      h('h3', { class: 'group-title' }, `${group.icon} ${tx(`g.${group.id}`, group.label)}`),
       fields,
       h('div', { class: 'tune-actions' },
         h('div', { class: 'row' },
-          h('button', { class: 'btn primary', onclick: () => this.save(false) }, '保存'),
-          h('button', { class: 'btn', onclick: () => this.save(true) }, '另存为'),
-          h('button', { class: 'btn ghost', onclick: () => this.revert() }, '撤销修改'),
+          h('button', { class: 'btn primary', onclick: () => this.save(false) }, t('common.save')),
+          h('button', { class: 'btn', onclick: () => this.save(true) }, t('common.saveAs')),
+          h('button', { class: 'btn ghost', onclick: () => this.revert() }, t('garage.revert')),
         ),
         h('div', { class: 'row' },
-          h('button', { class: 'btn ghost', onclick: () => this.resetDefaults() }, '恢复预设值'),
-          !c.builtin ? h('button', { class: 'btn danger', onclick: () => this.remove() }, '删除') : null,
+          h('button', { class: 'btn ghost', onclick: () => this.resetDefaults() }, t('garage.resetPreset')),
+          !c.builtin ? h('button', { class: 'btn danger', onclick: () => this.remove() }, t('common.delete')) : null,
         ),
         h('div', { class: 'row test-drive' }, trackSel, h('button', { class: 'btn go', onclick: () => {
-          const t = tracks.find((x) => x.id === (trackSel as HTMLSelectElement).value) ?? tracks[0];
-          setPrefs({ lastTrack: t.id });
-          toRace(t, this.current);
-        } }, '试驾 ▶')),
+          const tr = tracks.find((x) => x.id === (trackSel as HTMLSelectElement).value) ?? tracks[0];
+          setPrefs({ lastTrack: tr.id });
+          toRace(tr, this.current);
+        } }, t('garage.testDrive'))),
       ),
     );
     this.updateDirty();
@@ -145,13 +146,13 @@ export class GarageScreen implements Screen {
           (e.currentTarget as HTMLElement).classList.add('on');
           onChange();
         },
-      }, o.label)));
+      }, tx(`opt.${o.value}`, o.label))));
     } else if (m.kind === 'color') {
       input = h('input', { type: 'color', value: c[key], class: 'color', oninput: (e: Event) => { c[key] = (e.target as HTMLInputElement).value; onChange(); } });
     } else if (m.kind === 'text') {
-      input = h('input', { type: 'text', value: c[key], class: 'text', maxlength: 24, oninput: (e: Event) => { c[key] = (e.target as HTMLInputElement).value || '未命名'; onChange(); } });
+      input = h('input', { type: 'text', value: c[key], class: 'text', maxlength: 24, oninput: (e: Event) => { c[key] = (e.target as HTMLInputElement).value || t('garage.unnamed'); onChange(); } });
     } else {
-      const pct = m.unit === '%' || m.unit === '% 前';
+      const pct = m.unit === '%';
       const fmt = (v: number) => pct ? `${Math.round(v * 100)}` : (m.step ?? 1) < 0.1 ? v.toFixed(2) : (m.step ?? 1) < 1 ? v.toFixed(1) : String(Math.round(v));
       const num = h('input', { type: 'number', class: 'num', value: fmt(c[key]), step: pct ? '1' : String(m.step) });
       const range = h('input', { type: 'range', min: String(m.min), max: String(m.max), step: String(m.step), value: String(c[key]) });
@@ -169,9 +170,9 @@ export class GarageScreen implements Screen {
       input = h('div', { class: 'range-row' }, range, num, h('span', { class: 'unit' }, pct ? '%' : m.unit ?? ''));
     }
     return h('div', { class: 'field' },
-      h('div', { class: 'field-head' }, h('label', null, m.label)),
+      h('div', { class: 'field-head' }, h('label', null, tx(`p.${key}`, m.label))),
       input,
-      m.desc ? h('div', { class: 'desc' }, m.desc) : null,
+      m.desc ? h('div', { class: 'desc' }, tx(`p.${key}.d`, m.desc)) : null,
     );
   }
 
@@ -196,15 +197,15 @@ export class GarageScreen implements Screen {
     this.statsEl.innerHTML = '';
     this.statsEl.classList.remove('busy');
     this.statsEl.append(
-      stat('最大功率', `${Math.round(p.hp)} hp`, `@ ${p.rpm} rpm`),
-      stat('最大扭矩', `${Math.round(c.maxTorque)} Nm`, `@ ${c.peakTorqueRpm} rpm`),
-      stat('功重比', `${Math.round(p.hp / (c.mass / 1000))} hp/t`),
+      stat(t('garage.power'), `${Math.round(p.hp)} hp`, `@ ${p.rpm} rpm`),
+      stat(t('garage.torque'), `${Math.round(c.maxTorque)} Nm`, `@ ${c.peakTorqueRpm} rpm`),
+      stat(t('garage.p2w'), `${Math.round(p.hp / (c.mass / 1000))} hp/t`),
       stat('0-100 km/h', isNaN(perf.zeroTo100) ? '—' : `${perf.zeroTo100.toFixed(2)} s`),
       stat('0-200 km/h', isNaN(perf.zeroTo200) ? '—' : `${perf.zeroTo200.toFixed(2)} s`),
-      stat('极速', `${Math.round(perf.topSpeed)} km/h`),
-      stat('100-0 刹停', `${perf.brake100.toFixed(1)} m`),
-      stat('最大横向', `${perf.lateralG.toFixed(2)} g`),
-      h('div', { class: 'stat wide' }, h('small', null, '各挡极速 (红线)'), h('div', { class: 'gears' }, vmaxGear.map((v, i) => h('span', null, h('i', null, i + 1), `${Math.round(v)}`)))),
+      stat(t('garage.topSpeed'), `${Math.round(perf.topSpeed)} km/h`),
+      stat(t('garage.braking'), `${perf.brake100.toFixed(1)} m`),
+      stat(t('garage.lateral'), `${perf.lateralG.toFixed(2)} g`),
+      h('div', { class: 'stat wide' }, h('small', null, t('garage.gearSpeeds')), h('div', { class: 'gears' }, vmaxGear.map((v, i) => h('span', null, h('i', null, i + 1), `${Math.round(v)}`)))),
     );
   }
 
@@ -237,23 +238,23 @@ export class GarageScreen implements Screen {
     ctx.fillText(`${s.idleRpm}`, 4, hgt - 2);
     ctx.fillText(`${s.redline} rpm`, w - 60, hgt - 2);
     ctx.fillStyle = '#ffd23f';
-    ctx.fillText('扭矩', 10, 12);
+    ctx.fillText(t('garage.torqueShort'), 10, 12);
     ctx.fillStyle = '#ff5d73';
-    ctx.fillText('功率', 44, 12);
+    ctx.fillText(t('garage.powerShort'), 64, 12);
   }
 
   private save(asNew: boolean) {
     const c = this.current;
     if (c.builtin || asNew) {
       c.id = uid('car-');
-      if (c.builtin || asNew) c.name = asNew && !c.builtin ? `${c.name} 副本` : `${c.name}（改）`;
+      if (c.builtin || asNew) c.name = asNew && !c.builtin ? t('garage.copySuffix', { name: c.name }) : t('garage.modSuffix', { name: carName(c) });
       c.builtin = false;
     }
     saveCar(c);
     this.cars = listCars();
     this.original = JSON.stringify(c);
     setPrefs({ lastCar: c.id });
-    toast(`已保存「${c.name}」到车库`, 'good');
+    toast(t('garage.saved', { name: c.name }), 'good');
     this.renderList();
     this.renderPanel();
   }
@@ -277,17 +278,17 @@ export class GarageScreen implements Screen {
   private async newCar() {
     const c = cloneSetup(this.current);
     c.id = uid('car-');
-    c.name = '我的赛车 ' + (this.cars.filter((x) => !x.builtin).length + 1);
+    c.name = t('garage.myCar', { n: this.cars.filter((x) => !x.builtin).length + 1 });
     c.builtin = false;
     saveCar(c);
     this.cars = listCars();
     this.original = JSON.stringify(this.current);
     await this.select(c);
-    toast('已创建新赛车', 'good');
+    toast(t('garage.created'), 'good');
   }
 
   private async remove() {
-    if (!(await confirmDialog(`删除赛车「${this.current.name}」？`, '删除'))) return;
+    if (!(await confirmDialog(t('garage.deleteConfirm', { name: this.current.name }), t('common.delete')))) return;
     deleteCar(this.current.id);
     this.cars = listCars();
     this.original = JSON.stringify(this.current);

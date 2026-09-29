@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Screen } from '../app';
 import { CarVisual } from '../car/carVisual';
-import { ASSIST_LABELS } from '../car/physics';
+import { fmtDate, t, trackName, tx } from '../i18n';
 import { fetchBoard, fetchOnlineLap } from '../core/online';
 import { F, FRAME_STRIDE, fmtDelta, fmtTime, getLap, getPrefs, getTrack, lapsForTrack, type LapRecord } from '../core/storage';
 import { isOfficial } from '../track/official';
@@ -67,10 +67,10 @@ export class ReplayScreen implements Screen {
   }
 
   async mount(root: HTMLElement) {
-    root.append(h('div', { class: 'loading' }, '加载回放…'));
+    root.append(h('div', { class: 'loading' }, t('replay.loading')));
     await loadAssets();
     let lap: LapRecord | null = null;
-    let err = '找不到这条圈速记录';
+    let err = t('replay.notFound');
     try {
       lap = await this.load(this.lapId, this.online);
       if (lap && this.compareId) this.cmp = await this.load(this.compareId, this.online).catch(() => null);
@@ -79,13 +79,13 @@ export class ReplayScreen implements Screen {
     }
     root.innerHTML = '';
     if (!lap) {
-      root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, err), h('button', { class: 'btn', onclick: () => toLeaderboard() }, '返回'))));
+      root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, err), h('button', { class: 'btn', onclick: () => toLeaderboard() }, t('common.back')))));
       return;
     }
     this.lap = lap;
     const trackData = getTrack(lap.trackId);
     if (!trackData) {
-      root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, '赛道已被删除'), h('button', { class: 'btn', onclick: () => toLeaderboard() }, '返回'))));
+      root.append(h('div', { class: 'screen center' }, h('div', { class: 'panel' }, h('p', null, t('replay.trackDeleted')), h('button', { class: 'btn', onclick: () => toLeaderboard() }, t('common.back')))));
       return;
     }
 
@@ -244,7 +244,7 @@ export class ReplayScreen implements Screen {
     c.font = 'bold 50px "Baloo 2", sans-serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    c.fillText(`刹 ${Math.round(kmh)}`, 128, 52);
+    c.fillText(t('replay.brake', { v: Math.round(kmh) }), 128, 52);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, fog: false }));
@@ -274,11 +274,11 @@ export class ReplayScreen implements Screen {
     const rates = [0.25, 0.5, 1, 2, 4];
     const rateBtns = rates.map((r) => h('button', { class: 'chip' + (r === 1 ? ' on' : ''), onclick: () => { this.rate = r; this.syncButtons(); } }, `${r}x`));
     this.ui.rates = h('div', { class: 'chips' }, rateBtns);
-    const followBtn = h('button', { class: 'chip on', onclick: () => { this.follow = !this.follow; this.syncButtons(); } }, '跟随赛车');
-    const fullBtn = h('button', { class: 'chip', onclick: () => { this.fullLine = !this.fullLine; this.syncButtons(); } }, '完整路线');
-    const overviewBtn = h('button', { class: 'chip', onclick: () => this.overview() }, '全景');
-    const colorBtn = h('button', { class: 'chip', onclick: () => { this.colorMode = this.colorMode === 'speed' ? 'pedal' : 'speed'; this.rebuildLines(); this.renderLegend(); this.syncButtons(); } }, '着色：速度');
-    const markerBtn = h('button', { class: 'chip on', onclick: () => { this.markers.visible = !this.markers.visible; this.syncButtons(); } }, '刹车点');
+    const followBtn = h('button', { class: 'chip on', onclick: () => { this.follow = !this.follow; this.syncButtons(); } }, t('replay.follow'));
+    const fullBtn = h('button', { class: 'chip', onclick: () => { this.fullLine = !this.fullLine; this.syncButtons(); } }, t('replay.fullLine'));
+    const overviewBtn = h('button', { class: 'chip', onclick: () => this.overview() }, t('replay.overview'));
+    const colorBtn = h('button', { class: 'chip', onclick: () => { this.colorMode = this.colorMode === 'speed' ? 'pedal' : 'speed'; this.rebuildLines(); this.renderLegend(); this.syncButtons(); } }, t('replay.colorSpeed'));
+    const markerBtn = h('button', { class: 'chip on', onclick: () => { this.markers.visible = !this.markers.visible; this.syncButtons(); } }, t('replay.markers'));
     this.ui.follow = followBtn;
     this.ui.full = fullBtn;
     this.ui.color = colorBtn;
@@ -295,43 +295,44 @@ export class ReplayScreen implements Screen {
     const cmpSelect = h('select', { class: 'select', onchange: (e: Event) => {
       const v = (e.target as HTMLSelectElement).value;
       toReplay(this.lap.id, v || undefined, this.online);
-    } }, h('option', { value: '' }, '不对比'));
+    } }, h('option', { value: '' }, t('replay.noCompare')));
     const addOpt = (value: string, label: string, group: HTMLElement) => {
       const o = h('option', { value }, label);
       if (value === this.compareId || value.slice(2) === this.compareId) o.selected = true;
       group.append(o);
     };
     if (isOfficial(lap.trackId)) {
-      const g = h('optgroup', { label: '全球榜' });
+      const g = h('optgroup', { label: t('replay.globalGroup') });
       cmpSelect.append(g);
       fetchBoard(lap.trackId, 50).then((b) => b.entries.filter((e) => e.lapId !== lap!.id).forEach((e) => {
         addOpt('o:' + e.lapId, `#${b.entries.indexOf(e) + 1} ${fmtTime(e.time)} · ${e.name}`, g);
       })).catch(() => {});
     }
-    const lg = h('optgroup', { label: '本地记录' });
+    const lg = h('optgroup', { label: t('replay.localGroup') });
     cmpSelect.append(lg);
     lapsForTrack(lap.trackId).then((ls) => ls.filter((l) => l.id !== lap!.id).forEach((l, i) => {
       addOpt('l:' + l.id, `#${i + 1} ${fmtTime(l.time)} · ${l.carName}`, lg);
     }));
 
+    const trackTitle = trackName(getTrack(lap.trackId) ?? { id: lap.trackId, name: lap.trackName, builtin: false });
     root.append(
       h('div', { class: 'replay-top panel' },
-        h('button', { class: 'btn ghost', onclick: () => toLeaderboard(lap.trackId) }, '← 圈速榜'),
+        h('button', { class: 'btn ghost', onclick: () => toLeaderboard(lap.trackId) }, t('replay.back')),
         h('div', { class: 'replay-title' },
-          h('div', { class: 'title' }, `${lap.trackName} · ${fmtTime(lap.time)}${lap.playerName ? ` · 👤 ${lap.playerName}` : ''}`),
-          h('div', { class: 'dim' }, `${lap.carName} · ${lap.car.drivetrain} · 辅助${ASSIST_LABELS[lap.assist ?? 'pro']}${lap.rewinds ? ` · ⏪${lap.rewinds}` : ''} · ${new Date(lap.date).toLocaleString()} · 极速 ${Math.round(lap.topSpeed)} km/h · 分段 ${lap.sectors.map((s) => s.toFixed(2)).join(' / ')}`),
+          h('div', { class: 'title' }, `${trackTitle} · ${fmtTime(lap.time)}${lap.playerName ? ` · 👤 ${lap.playerName}` : ''}`),
+          h('div', { class: 'dim' }, t('replay.meta', { car: tx(`car.${lap.carId}`, lap.carName), dt: lap.car.drivetrain, assist: t(`assist.${lap.assist ?? 'pro'}`), rw: lap.rewinds ? ` · ⏪${lap.rewinds}` : '', date: fmtDate(lap.date, true), top: Math.round(lap.topSpeed), sectors: lap.sectors.map((s) => s.toFixed(2)).join(' / ') })),
         ),
-        h('div', { class: 'row' }, h('span', { class: 'dim' }, '对比：'), cmpSelect),
+        h('div', { class: 'row' }, h('span', { class: 'dim' }, t('replay.compare')), cmpSelect),
       ),
       h('div', { class: 'replay-side panel' },
-        h('div', { class: 'row between' }, h('label', null, '时间'), this.ui.time),
-        this.cmp ? h('div', { class: 'row between' }, h('label', null, '对比差'), this.ui.delta) : null,
+        h('div', { class: 'row between' }, h('label', null, t('replay.time')), this.ui.time),
+        this.cmp ? h('div', { class: 'row between' }, h('label', null, t('replay.delta')), this.ui.delta) : null,
         h('div', { class: 'speed-row' }, this.ui.speed, h('span', { class: 'unit' }, 'km/h'), this.ui.gear),
         this.ui.rpm,
         h('div', { class: 'pedals' }, h('div', { class: 'pedal' }, this.ui.brk), h('div', { class: 'pedal' }, this.ui.thr)),
         legend,
-        h('details', { class: 'time-details' }, h('summary', null, '🌗 时间与画面'), timeControls(this.env)),
-        h('div', { class: 'hint dim' }, '左键拖动旋转 · 右键平移 · 滚轮缩放', h('br'), '空格 播放/暂停 · ←/→ 快退/快进'),
+        h('details', { class: 'time-details' }, h('summary', null, t('time.settings')), timeControls(this.env)),
+        h('div', { class: 'hint dim' }, t('replay.help'), h('br'), t('replay.help2')),
       ),
       h('div', { class: 'replay-bottom panel' },
         h('div', { class: 'row' }, playBtn, this.scrub),
@@ -352,21 +353,21 @@ export class ReplayScreen implements Screen {
     if (this.colorMode === 'speed') {
       const stops = [0, 0.25, 0.5, 0.75, 1].map((k) => `${cssColor(speedColor(k))} ${k * 100}%`).join(',');
       el.append(
-        h('div', { class: 'legend-title' }, '路线颜色 = 速度'),
+        h('div', { class: 'legend-title' }, t('replay.legendSpeed')),
         h('div', { class: 'legend-bar', style: { background: `linear-gradient(90deg, ${stops})` } }),
         h('div', { class: 'row between mono dim' }, h('span', null, `${Math.round(this.minV * 3.6)}`), h('span', null, `${Math.round(this.maxV * 3.6)} km/h`)),
       );
     } else {
       el.append(
-        h('div', { class: 'legend-title' }, '路线颜色 = 踏板'),
+        h('div', { class: 'legend-title' }, t('replay.legendPedal')),
         h('div', { class: 'row legend-keys' },
-          h('span', null, h('i', { style: { background: '#43d34d' } }), '油门'),
-          h('span', null, h('i', { style: { background: '#f23333' } }), '刹车'),
-          h('span', null, h('i', { style: { background: '#d9d9d9' } }), '滑行'),
+          h('span', null, h('i', { style: { background: '#43d34d' } }), t('replay.throttle')),
+          h('span', null, h('i', { style: { background: '#f23333' } }), t('replay.brakeKey')),
+          h('span', null, h('i', { style: { background: '#d9d9d9' } }), t('replay.coast')),
         ),
       );
     }
-    if (this.cmp) el.append(h('div', { class: 'row legend-keys' }, h('span', null, h('i', { style: { background: '#ff9ff3' } }), `对比圈 ${fmtTime(this.cmp.time)}`)));
+    if (this.cmp) el.append(h('div', { class: 'row legend-keys' }, h('span', null, h('i', { style: { background: '#ff9ff3' } }), t('replay.cmpLap', { time: fmtTime(this.cmp.time) }))));
   }
 
   private syncButtons() {
@@ -375,7 +376,7 @@ export class ReplayScreen implements Screen {
     this.ui.follow.classList.toggle('on', this.follow);
     this.ui.full.classList.toggle('on', this.fullLine);
     this.ui.marker.classList.toggle('on', this.markers.visible);
-    this.ui.color.textContent = this.colorMode === 'speed' ? '着色：速度' : '着色：踏板';
+    this.ui.color.textContent = this.colorMode === 'speed' ? t('replay.colorSpeed') : t('replay.colorPedal');
   }
 
   private overview() {

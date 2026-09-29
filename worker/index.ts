@@ -9,6 +9,7 @@
  *   GET  /api/laps/:id                                -> full lap incl. gzipped frames (base64)
  *
  * Auth: `Authorization: Bearer <token>`; only a SHA-256 of the token is stored.
+ * Errors are `{ error: <code> }`; the client translates the code (see `err.*` in src/i18n).
  */
 import { base64ToBytes, F, FRAME_STRIDE, unpackFrames } from '../src/core/lapFormat';
 import { OFFICIAL_TRACKS, trackHash } from '../src/track/official';
@@ -51,10 +52,10 @@ async function sha256(s: string) {
 }
 
 function cleanName(raw: unknown) {
-  if (typeof raw !== 'string') throw new HttpError(400, '用户名无效');
+  if (typeof raw !== 'string') throw new HttpError(400, 'badName');
   // strip control characters and collapse whitespace
   const name = raw.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
-  if (!name || [...name].length > 16) throw new HttpError(400, '用户名需要 1-16 个字符');
+  if (!name || [...name].length > 16) throw new HttpError(400, 'nameLength');
   return name;
 }
 
@@ -64,21 +65,21 @@ async function auth(req: Request, env: Env, required: boolean) {
   const h = req.headers.get('authorization') ?? '';
   const token = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
   if (!token) {
-    if (required) throw new HttpError(401, '未登录');
+    if (required) throw new HttpError(401, 'unauthorized');
     return null;
   }
   const row = await env.DB.prepare('SELECT id, name, last_submit FROM users WHERE token_hash = ?').bind(await sha256(token)).first<{ id: string; name: string; last_submit: number }>();
-  if (!row && required) throw new HttpError(401, '身份无效，请刷新页面');
+  if (!row && required) throw new HttpError(401, 'badToken');
   return row ?? null;
 }
 
 async function body<T>(req: Request, limit = 1_200_000): Promise<T> {
   const len = Number(req.headers.get('content-length') ?? 0);
-  if (len > limit) throw new HttpError(413, '数据太大');
+  if (len > limit) throw new HttpError(413, 'tooLarge');
   try {
     return (await req.json()) as T;
   } catch {
-    throw new HttpError(400, '请求格式错误');
+    throw new HttpError(400, 'badRequest');
   }
 }
 
@@ -97,40 +98,40 @@ interface LapSubmission {
 
 async function validateLap(lap: LapSubmission) {
   const t = official(lap.trackId);
-  if (!t) throw new HttpError(400, '不是官方赛道');
-  if (lap.trackHash !== t.hash) throw new HttpError(409, '赛道版本已更新，请刷新页面');
+  if (!t) throw new HttpError(400, 'notOfficial');
+  if (lap.trackHash !== t.hash) throw new HttpError(409, 'trackOutdated');
   const L = t.geo.length;
   const time = Number(lap.time);
-  if (!isFinite(time) || time < L / 95 || time > 3600) throw new HttpError(422, '圈速不合理');
-  if (!Array.isArray(lap.sectors) || lap.sectors.length !== 3 || lap.sectors.some((x) => typeof x !== 'number' || !(x > 0))) throw new HttpError(422, '分段数据无效');
-  if (Math.abs(lap.sectors.reduce((a, b) => a + b, 0) - time) > 0.05) throw new HttpError(422, '分段与圈速不符');
-  if (!ASSISTS.has(lap.assist)) throw new HttpError(422, '辅助等级无效');
-  if (!lap.car || typeof lap.car !== 'object' || JSON.stringify(lap.car).length > 8000) throw new HttpError(422, '赛车数据无效');
-  if (typeof lap.frames !== 'string' || lap.frames.length > MAX_FRAMES_B64) throw new HttpError(422, '回放数据无效');
+  if (!isFinite(time) || time < L / 95 || time > 3600) throw new HttpError(422, 'lapTime');
+  if (!Array.isArray(lap.sectors) || lap.sectors.length !== 3 || lap.sectors.some((x) => typeof x !== 'number' || !(x > 0))) throw new HttpError(422, 'sectors');
+  if (Math.abs(lap.sectors.reduce((a, b) => a + b, 0) - time) > 0.05) throw new HttpError(422, 'sectorSum');
+  if (!ASSISTS.has(lap.assist)) throw new HttpError(422, 'assist');
+  if (!lap.car || typeof lap.car !== 'object' || JSON.stringify(lap.car).length > 8000) throw new HttpError(422, 'car');
+  if (typeof lap.frames !== 'string' || lap.frames.length > MAX_FRAMES_B64) throw new HttpError(422, 'replay');
 
   const gz = base64ToBytes(lap.frames);
   let frames: Float32Array;
   try {
     frames = await unpackFrames(gz);
   } catch {
-    throw new HttpError(422, '回放数据无法解压');
+    throw new HttpError(422, 'replayCorrupt');
   }
   const n = Math.floor(frames.length / FRAME_STRIDE);
-  if (frames.length % FRAME_STRIDE !== 0 || n < time * 20 || n > time * 40 + 10) throw new HttpError(422, '回放帧数不符');
+  if (frames.length % FRAME_STRIDE !== 0 || n < time * 20 || n > time * 40 + 10) throw new HttpError(422, 'frameCount');
   const get = (i: number, f: number) => frames[i * FRAME_STRIDE + f];
-  if (Math.abs(get(n - 1, F.t) - time) > 0.06) throw new HttpError(422, '回放时长不符');
-  if (get(0, F.s) > 15 || get(n - 1, F.s) < L - 5) throw new HttpError(422, '回放没有跑完整圈');
+  if (Math.abs(get(n - 1, F.t) - time) > 0.06) throw new HttpError(422, 'replayDuration');
+  if (get(0, F.s) > 15 || get(n - 1, F.s) < L - 5) throw new HttpError(422, 'incomplete');
   let maxSpeed = 0, maxOff = 0, hint = -1;
   for (let i = 0; i < n; i++) {
-    for (let f = 0; f < FRAME_STRIDE; f++) if (!isFinite(get(i, f))) throw new HttpError(422, '回放数据损坏');
+    for (let f = 0; f < FRAME_STRIDE; f++) if (!isFinite(get(i, f))) throw new HttpError(422, 'replayCorrupt');
     const v = get(i, F.speed);
     maxSpeed = Math.max(maxSpeed, v);
     if (i > 0) {
       const dt = get(i, F.t) - get(i - 1, F.t);
-      if (dt <= 0 || dt > 0.2) throw new HttpError(422, '回放时间轴异常');
+      if (dt <= 0 || dt > 0.2) throw new HttpError(422, 'timeline');
       const d = Math.hypot(get(i, F.x) - get(i - 1, F.x), get(i, F.z) - get(i - 1, F.z));
       const vAvg = (v + get(i - 1, F.speed)) / 2;
-      if (d > vAvg * dt * 1.6 + 1.5) throw new HttpError(422, '回放位置跳变');
+      if (d > vAvg * dt * 1.6 + 1.5) throw new HttpError(422, 'teleport');
     }
     if (i % 10 === 0) {
       const pr = t.geo.project(get(i, F.x), get(i, F.z), hint);
@@ -138,12 +139,12 @@ async function validateLap(lap: LapSubmission) {
       maxOff = Math.max(maxOff, Math.abs(pr.lateral));
     }
   }
-  if (maxSpeed > 125) throw new HttpError(422, '速度超出物理极限');
-  if (maxOff > t.geo.width / 2 + 45) throw new HttpError(422, '偏离赛道过远');
+  if (maxSpeed > 125) throw new HttpError(422, 'speed');
+  if (maxOff > t.geo.width / 2 + 45) throw new HttpError(422, 'offTrack');
   // the replay's average speed must match the lap time
   let dist = 0;
   for (let i = 1; i < n; i++) dist += Math.hypot(get(i, F.x) - get(i - 1, F.x), get(i, F.z) - get(i - 1, F.z));
-  if (dist < L * 0.85) throw new HttpError(422, '行驶距离不足一圈');
+  if (dist < L * 0.85) throw new HttpError(422, 'distance');
   return gz;
 }
 
@@ -178,7 +179,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   let mm = p.match(/^\/api\/tracks\/([\w-]+)\/board$/);
   if (mm && m === 'GET') {
     const t = official(mm[1]);
-    if (!t) throw new HttpError(404, '不是官方赛道');
+    if (!t) throw new HttpError(404, 'notOfficial');
     const limit = Math.max(1, Math.min(200, Number(url.searchParams.get('limit') ?? 100)));
     const u = await auth(req, env, false);
     const rows = await env.DB.prepare(
@@ -205,7 +206,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (p === '/api/laps' && m === 'POST') {
     const u = await auth(req, env, true);
     const now = Date.now();
-    if (now - u.last_submit < SUBMIT_COOLDOWN_MS) throw new HttpError(429, '提交太频繁');
+    if (now - u.last_submit < SUBMIT_COOLDOWN_MS) throw new HttpError(429, 'rateLimit');
     const lap = await body<LapSubmission>(req);
     const gz = await validateLap(lap);
     await env.DB.prepare('UPDATE users SET last_submit = ? WHERE id = ?').bind(now, u.id).run();
@@ -234,7 +235,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const r = await env.DB.prepare(
       `SELECT l.*, u.name FROM laps l JOIN users u ON u.id = l.user_id WHERE l.id = ?`,
     ).bind(mm[1]).first<any>();
-    if (!r) throw new HttpError(404, '记录不存在（可能已被本人刷新）');
+    if (!r) throw new HttpError(404, 'lapGone');
     const bytes = new Uint8Array(r.frames as ArrayBuffer);
     let s = '';
     for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
@@ -245,7 +246,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=86400, immutable' } });
   }
 
-  throw new HttpError(404, 'Not found');
+  throw new HttpError(404, 'notFound');
 }
 
 export default {
@@ -257,7 +258,7 @@ export default {
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status);
       console.error(e);
-      return json({ error: '服务器错误' }, 500);
+      return json({ error: 'server' }, 500);
     }
   },
 } satisfies ExportedHandler<Env>;

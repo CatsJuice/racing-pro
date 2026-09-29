@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { fmtDelta, fmtTime } from '../core/storage';
 import { drawTrack, fitView, type View2D } from '../track/draw2d';
 import { splinePolyline, type TrackData } from '../track/track';
@@ -19,7 +20,7 @@ export interface HudLapInfo {
 export class Hud {
   el: HTMLElement;
   private lapTime = h('div', { class: 'hud-laptime mono' }, '--:--.---');
-  private lapLabel = h('div', { class: 'hud-lapno' }, '出场圈');
+  private lapLabel = h('div', { class: 'hud-lapno' }, t('hud.outLap'));
   private deltaEl = h('div', { class: 'hud-delta mono' });
   private lastEl = h('span', { class: 'mono' }, '--');
   private bestEl = h('span', { class: 'mono' }, '--');
@@ -65,8 +66,8 @@ export class Hud {
         this.deltaEl,
         h('div', { class: 'hud-sectors' }, this.sectorEls),
         h('div', { class: 'hud-rows' },
-          h('div', null, h('label', null, '上一圈'), this.lastEl),
-          h('div', null, h('label', null, '最佳'), this.bestEl),
+          h('div', null, h('label', null, t('hud.last')), this.lastEl),
+          h('div', null, h('label', null, t('hud.best')), this.bestEl),
         ),
         this.ghostEl,
         this.onlineEl,
@@ -89,7 +90,7 @@ export class Hud {
         h('div', { class: 'steer-bar' }, this.steerDot),
       ),
       this.msgEl,
-      h('div', { class: 'hud-help' }, 'W/S 油门刹车 · A/D 转向 · 空格 手刹 · Q/E 换挡 · 按住 R 时间回退 · Backspace 复位 · C 视角 · G 幽灵车 · M 静音 · T 时间 · Esc 暂停'),
+      h('div', { class: 'hud-help' }, t('hud.help')),
     );
   }
 
@@ -102,7 +103,7 @@ export class Hud {
   }
 
   setAssist(label: string) {
-    this.assistEl.textContent = `辅助 ${label}`;
+    this.assistEl.textContent = t('hud.assist', { label });
   }
 
   message(text: string, kind: 'info' | 'good' | 'bad' = 'info', seconds = 2.5) {
@@ -132,7 +133,7 @@ export class Hud {
       const col = slip < 0.7 ? '#43c46b' : slip < 1.0 ? '#b7d84a' : slip < 1.3 ? '#ffc53d' : '#ff4b4b';
       el.style.background = col;
       (el.firstChild as HTMLElement).style.height = `${Math.min(100, (w.load / nominal) * 50)}%`;
-      el.title = `载荷 ${w.load.toFixed(0)}N 滑移 ${slip.toFixed(2)}`;
+      el.title = t('hud.tire', { load: w.load.toFixed(0), slip: slip.toFixed(2) });
     });
     this.thrBar.style.height = `${p.throttleOut * 100}%`;
     this.brkBar.style.height = `${p.brakeOut * 100}%`;
@@ -144,7 +145,7 @@ export class Hud {
   }
 
   updateLap(l: HudLapInfo) {
-    this.lapLabel.textContent = l.current == null ? '出场圈 · 越过起跑线开始计时' : `第 ${l.lapNo} 圈`;
+    this.lapLabel.textContent = l.current == null ? t('hud.outLapHint') : t('hud.lapNo', { n: l.lapNo });
     this.lapTime.textContent = l.current == null ? '--:--.---' : fmtTime(l.current);
     this.lastEl.textContent = fmtTime(l.last);
     this.bestEl.textContent = fmtTime(l.best);
@@ -154,7 +155,7 @@ export class Hud {
     } else {
       this.deltaEl.textContent = '';
     }
-    this.validEl.textContent = l.current == null ? '' : l.valid ? '有效' : '无效';
+    this.validEl.textContent = l.current == null ? '' : l.valid ? t('hud.valid') : t('hud.invalid');
     this.validEl.className = `hud-badge ${l.current == null ? '' : l.valid ? 'ok' : 'bad'}`;
     l.sectors.forEach((t, i) => {
       const el = this.sectorEls[i];

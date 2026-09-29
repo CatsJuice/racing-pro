@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { Screen } from '../app';
 import { CarVisual } from '../car/carVisual';
-import { ASSIST_LABELS, ASSISTS, type AssistLevel, VehiclePhysics } from '../car/physics';
+import { ASSIST_LEVELS, ASSISTS, type AssistLevel, VehiclePhysics } from '../car/physics';
+import { carName, t, trackName } from '../i18n';
 import { cloneSetup, type CarSetup } from '../car/setup';
 import { bestLap, F, FRAME_STRIDE, fmtTime, getPrefs, type LapRecord, setPrefs, submitLap, uid } from '../core/storage';
 import { fetchBoard, fetchOnlineLap, identity, submitOnline } from '../core/online';
@@ -20,7 +21,7 @@ import { FallingLeaves, SkidMarks, Smoke } from './effects';
 import { Hud } from './hud';
 import { Input } from './input';
 
-const CAMERA_NAMES = ['追尾', '远距追尾', '车头', '直升机'];
+const CAMERA_KEYS = ['race.camChase', 'race.camFar', 'race.camHood', 'race.camHeli'] as const;
 const REWIND_SECONDS = 20;
 
 /** Everything needed to resume the session from a past moment. */
@@ -115,7 +116,7 @@ export class RaceScreen implements Screen {
 
   async mount(root: HTMLElement) {
     this.root = root;
-    root.append(h('div', { class: 'loading' }, '加载中…'));
+    root.append(h('div', { class: 'loading' }, t('common.loading')));
     await loadAssets();
     root.innerHTML = '';
     const prefs = getPrefs();
@@ -171,20 +172,20 @@ export class RaceScreen implements Screen {
       try {
         this.setGhost(await fetchOnlineLap(this.opts.ghostLapId), 'challenge');
       } catch (e) {
-        this.hud.message(`幽灵车加载失败：${(e as Error).message}`, 'bad');
+        this.hud.message(t('race.ghostFail', { err: (e as Error).message }), 'bad');
         if (best) this.setGhost(best, 'personal');
       }
     } else if (best) this.setGhost(best, 'personal');
     if (this.official) {
-      this.hud.setOnline(identity() ? '🌍 全球榜' : '🌍 未设置车手名，圈速不会上传');
+      this.hud.setOnline(identity() ? t('race.globalBoard') : t('race.noNameNoUpload'));
       fetchBoard(this.trackData.id, 1).then((b) => {
         const wr = b.entries[0];
-        const mine = b.me ? `🌍 我：全球第 ${b.me.rank} / ${b.total}` : '🌍 全球榜';
-        this.hud.setOnline(wr ? `${mine} · 纪录 ${wr.name} ${fmtTime(wr.time)}` : `${mine} · 暂无纪录`);
-      }).catch(() => this.hud.setOnline('🌍 离线（无法连接服务器）'));
+        const mine = b.me ? t('race.myRank', { rank: b.me.rank, total: b.total }) : t('race.globalBoard');
+        this.hud.setOnline(wr ? t('race.record', { mine, name: wr.name, time: fmtTime(wr.time) }) : t('race.noRecord', { mine }));
+      }).catch(() => this.hud.setOnline(t('race.offline')));
     }
-    this.hud.message(`${this.trackData.name} · ${this.setup.name} · 辅助：${ASSIST_LABELS[this.assistLevel]}`, 'info', 3);
-    this.hud.setAssist(ASSIST_LABELS[this.assistLevel]);
+    this.hud.message(t('race.intro', { track: trackName(this.trackData), car: carName(this.setup), assist: t(`assist.${this.assistLevel}`) }), 'info', 3);
+    this.hud.setAssist(t(`assist.${this.assistLevel}`));
   }
 
   private setGhost(lap: LapRecord, kind: 'personal' | 'challenge') {
@@ -201,17 +202,17 @@ export class RaceScreen implements Screen {
   private refreshGhostLabel() {
     const g = this.ghostLap;
     if (!g) return this.hud.setGhostInfo(null);
-    const who = g.playerName ?? '我';
-    this.hud.setGhostInfo(`${this.ghostKind === 'challenge' ? '挑战' : '幽灵'}：${who} ${fmtTime(g.time)}`);
+    const who = g.playerName ?? t('common.me');
+    this.hud.setGhostInfo(t(this.ghostKind === 'challenge' ? 'race.challengeLabel' : 'race.ghostLabel', { who, time: fmtTime(g.time) }));
   }
 
   private async challengeWorldRecord() {
     try {
       const b = await fetchBoard(this.trackData.id, 1);
       const top = b.entries[0];
-      if (!top) return this.hud.message('还没有世界纪录', 'info');
+      if (!top) return this.hud.message(t('race.noWorldRecord'), 'info');
       this.setGhost(await fetchOnlineLap(top.lapId), 'challenge');
-      this.hud.message(`挑战 ${top.name} 的 ${fmtTime(top.time)}`, 'good');
+      this.hud.message(t('race.challenging', { name: top.name, time: fmtTime(top.time) }), 'good');
     } catch (e) {
       this.hud.message((e as Error).message, 'bad');
     }
@@ -238,7 +239,7 @@ export class RaceScreen implements Screen {
     this.phys.reset(p.x, p.z, Math.atan2(p.tx, p.tz));
     this.wheelHints = [pr.index, pr.index, pr.index, pr.index];
     this.skids.reset();
-    if (this.lapActive) this.invalidate('复位');
+    if (this.lapActive) this.invalidate(t('race.reason.reset'));
     this.lastS = pr.s;
     this.camYaw = this.phys.heading;
   }
@@ -247,7 +248,7 @@ export class RaceScreen implements Screen {
     if (!this.lapActive || !this.lapValid) return;
     this.lapValid = false;
     this.invalidReason = reason;
-    this.hud.message(`本圈无效：${reason}`, 'bad');
+    this.hud.message(t('race.invalid', { reason }), 'bad');
   }
 
   // ------------------------------------------------------------------ loop
@@ -257,17 +258,17 @@ export class RaceScreen implements Screen {
     if (this.input.consume('camera')) {
       this.camMode = (this.camMode + 1) % 4;
       setPrefs({ camera: this.camMode });
-      this.hud.message(`视角：${CAMERA_NAMES[this.camMode]}`, 'info', 1.2);
+      this.hud.message(t('race.camera', { name: t(CAMERA_KEYS[this.camMode]) }), 'info', 1.2);
     }
     if (this.input.consume('ghost')) {
       this.ghostEnabled = !this.ghostEnabled;
       setPrefs({ ghost: this.ghostEnabled });
-      this.hud.message(this.ghostEnabled ? '幽灵车：开' : '幽灵车：关', 'info', 1.2);
+      this.hud.message(t(this.ghostEnabled ? 'race.ghostOn' : 'race.ghostOff'), 'info', 1.2);
     }
     if (this.input.consume('time')) {
       const next = TIME_PRESETS.find((t) => t.h > this.env.hour + 0.1) ?? TIME_PRESETS[0];
       this.setHour(next.h);
-      this.hud.message(`时间：${next.label} ${hourLabel(next.h)}`, 'info', 1.2);
+      this.hud.message(t('race.timeSet', { label: t(next.key), time: hourLabel(next.h) }), 'info', 1.2);
     }
     if (this.input.consume('mute') && this.audio) {
       this.audio.setMuted(!this.audio.isMuted);
@@ -364,7 +365,7 @@ export class RaceScreen implements Screen {
       this.rewindHold = 0;
       this.audio?.setMuted(true);
       document.body.classList.add('rewinding');
-      this.rewindEl = h('div', { class: 'rewind-overlay' }, h('div', { class: 'rewind-badge' }, '⏪ 时间回退', h('small', null, '')));
+      this.rewindEl = h('div', { class: 'rewind-overlay' }, h('div', { class: 'rewind-badge' }, t('race.rewind'), h('small', null, '')));
       this.root.append(this.rewindEl);
     }
     // accelerates the longer the key is held (1x → 4x)
@@ -376,7 +377,7 @@ export class RaceScreen implements Screen {
     const back = this.history[this.history.length - 1].simTime - this.simTime;
     const left = this.history[this.rewindCursor].simTime - this.history[0].simTime;
     const small = this.rewindEl?.querySelector('small');
-    if (small) small.textContent = `-${back.toFixed(1)}s${left < 0.05 ? ' · 已到尽头' : ''}`;
+    if (small) small.textContent = `-${back.toFixed(1)}s${left < 0.05 ? t('race.rewindEnd') : ''}`;
     this.refreshLapHud();
   }
 
@@ -422,7 +423,7 @@ export class RaceScreen implements Screen {
         p.yawRate *= 0.5;
         this.shake = Math.min(1, vn / 15);
         if (vn > 2) this.audio?.thump(vn / 20);
-        if (vn > 6) this.hud.message('碰撞！', 'bad', 0.8);
+        if (vn > 6) this.hud.message(t('race.crash'), 'bad', 0.8);
       }
     }
     // world bounds
@@ -448,16 +449,16 @@ export class RaceScreen implements Screen {
     if (velDot < -0.5 && p.speed > 4) this.wrongWay += dt;
     else this.wrongWay = 0;
     if (this.wrongWay > 1.5) {
-      if (this.wrongWay < 1.5 + dt * 1.5) this.hud.message('逆行！', 'bad', 1.5);
-      this.invalidate('逆行');
+      if (this.wrongWay < 1.5 + dt * 1.5) this.hud.message(t('race.wrongWay'), 'bad', 1.5);
+      this.invalidate(t('race.reason.wrongWay'));
     }
     // shortcut detection
-    if (this.lapActive && ds > 45) this.invalidate('抄近路');
+    if (this.lapActive && ds > 45) this.invalidate(t('race.reason.shortcut'));
     // off track: all four wheels off the tarmac/kerbs
     // (a brief graze does not count; must stay fully off for a moment)
     if (this.surfKinds.every((k) => k === 'grass')) this.offTime += dt;
     else this.offTime = 0;
-    if (this.lapActive && this.offTime > 0.35) this.invalidate('四轮出界');
+    if (this.lapActive && this.offTime > 0.35) this.invalidate(t('race.reason.offTrack'));
 
     if (this.lapActive) {
       const lapT = this.simTime - this.lapStart;
@@ -474,7 +475,7 @@ export class RaceScreen implements Screen {
     const crossedFwd = prev > L - 40 && s < 40 && ds > 0;
     const crossedBack = prev < 40 && s > L - 40 && ds < 0;
     if (crossedBack) {
-      if (this.lapActive) this.invalidate('倒车过线');
+      if (this.lapActive) this.invalidate(t('race.reason.reverseLine'));
     }
     if (crossedFwd) {
       const frac = (L - prev) / Math.max(1e-6, L - prev + s);
@@ -575,7 +576,7 @@ export class RaceScreen implements Screen {
     this.lastLap = time;
     this.sessionLaps.push({ time, valid: this.lapValid });
     if (!this.lapValid) {
-      this.hud.message(`圈速 ${fmtTime(time)}（无效：${this.invalidReason}）`, 'bad', 3);
+      this.hud.message(t('race.lapInvalid', { time: fmtTime(time), reason: this.invalidReason }), 'bad', 3);
       return;
     }
     const lap: LapRecord = {
@@ -598,21 +599,21 @@ export class RaceScreen implements Screen {
     if (personalBest) this.bestTime = time;
     submitLap(lap).then((rank) => {
       if (personalBest) {
-        this.hud.message(`🏆 个人最佳！${fmtTime(time)}`, 'good', 3.5);
+        this.hud.message(t('race.pb', { time: fmtTime(time) }), 'good', 3.5);
         if (this.ghostKind === 'personal') this.setGhost(lap, 'personal');
       } else if (!this.official) {
-        this.hud.message(rank > 0 ? `圈速 ${fmtTime(time)} · 本地第 ${rank}` : `圈速 ${fmtTime(time)}`, rank > 0 ? 'good' : 'info', 3);
+        this.hud.message(rank > 0 ? t('race.lapLocalRank', { time: fmtTime(time), rank }) : t('race.lap', { time: fmtTime(time) }), rank > 0 ? 'good' : 'info', 3);
       }
     });
     if (this.official) {
       if (!identity()) {
-        this.hud.message(`圈速 ${fmtTime(time)} · 设置车手名后才能上传全球榜`, 'info', 3);
+        this.hud.message(t('race.lapNeedName', { time: fmtTime(time) }), 'info', 3);
       } else {
         submitOnline(lap).then((r) => {
-          this.hud.setOnline(`🌍 全球第 ${r.rank}`);
-          if (r.improved) this.hud.message(r.rank === 1 ? `🌍 世界纪录！${fmtTime(time)}` : `🌍 全球第 ${r.rank} 名！${fmtTime(time)}`, 'good', 4);
-          else if (!personalBest) this.hud.message(`圈速 ${fmtTime(time)} · 全球最佳仍是 ${fmtTime(r.best)}`, 'info', 3);
-        }).catch((e) => this.hud.message(`上传失败：${(e as Error).message}`, 'bad', 3));
+          this.hud.setOnline(t('race.globalRank', { rank: r.rank }));
+          if (r.improved) this.hud.message(r.rank === 1 ? t('race.worldRecord', { time: fmtTime(time) }) : t('race.globalPlace', { rank: r.rank, time: fmtTime(time) }), 'good', 4);
+          else if (!personalBest) this.hud.message(t('race.globalBestStill', { time: fmtTime(time), best: fmtTime(r.best) }), 'info', 3);
+        }).catch((e) => this.hud.message(t('race.uploadFail', { err: (e as Error).message }), 'bad', 3));
       }
     }
     // track best sectors
@@ -712,9 +713,9 @@ export class RaceScreen implements Screen {
     this.assistLevel = l;
     this.phys.assist = ASSISTS[l];
     setPrefs({ assist: l });
-    this.hud.setAssist(ASSIST_LABELS[l]);
+    this.hud.setAssist(t(`assist.${l}`));
     // changing aids mid-lap would mix two categories on the leaderboard
-    this.invalidate('切换了驾驶辅助');
+    this.invalidate(t('race.reason.assist'));
   }
 
   private togglePause() {
@@ -724,28 +725,28 @@ export class RaceScreen implements Screen {
       const laps = this.sessionLaps.slice(-8).reverse();
       this.pauseEl = h('div', { class: 'modal-wrap' },
         h('div', { class: 'modal panel pause' },
-          h('h2', null, '暂停'),
+          h('h2', null, t('pause.title')),
           timeControls(this.env),
           h('div', { class: 'col' },
-            h('button', { class: 'btn primary', onclick: () => this.togglePause() }, '继续'),
-            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.resetToTrack(); } }, '复位到赛道'),
-            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.placeOnGrid(); } }, '回到起跑线'),
-            h('div', { class: 'seg assist-seg' }, (['novice', 'standard', 'pro'] as AssistLevel[]).map((l) => h('button', {
+            h('button', { class: 'btn primary', onclick: () => this.togglePause() }, t('pause.resume')),
+            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.resetToTrack(); } }, t('pause.reset')),
+            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.placeOnGrid(); } }, t('pause.grid')),
+            h('div', { class: 'seg assist-seg' }, ASSIST_LEVELS.map((l) => h('button', {
               class: `seg-btn ${l === this.assistLevel ? 'on' : ''}`,
               onclick: (e: Event) => {
                 this.setAssist(l);
                 (e.currentTarget as HTMLElement).parentElement!.querySelectorAll('.seg-btn').forEach((b) => b.classList.remove('on'));
                 (e.currentTarget as HTMLElement).classList.add('on');
               },
-            }, `辅助：${ASSIST_LABELS[l]}`))),
-            h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, '圈速榜 / 回放'),
-            this.official ? h('button', { class: 'btn', onclick: () => { this.togglePause(); this.challengeWorldRecord(); } }, '🌍 挑战世界纪录幽灵') : null,
-            this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id, undefined, this.ghostLap!.online) }, '回放幽灵圈') : null,
-            h('button', { class: 'btn ghost', onclick: () => toMenu() }, '退出到主菜单'),
+            }, t('pause.assist', { level: t(`assist.${l}`) })))),
+            h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, t('pause.board')),
+            this.official ? h('button', { class: 'btn', onclick: () => { this.togglePause(); this.challengeWorldRecord(); } }, t('pause.challengeWr')) : null,
+            this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id, undefined, this.ghostLap!.online) }, t('pause.replayGhost')) : null,
+            h('button', { class: 'btn ghost', onclick: () => toMenu() }, t('pause.quit')),
           ),
           laps.length ? h('div', { class: 'session' },
-            h('h3', null, '本次圈速'),
-            laps.map((l) => h('div', { class: `row between ${l.valid ? '' : 'dim'}` }, h('span', { class: 'mono' }, fmtTime(l.time)), h('span', null, l.valid ? '' : '无效'))),
+            h('h3', null, t('pause.session')),
+            laps.map((l) => h('div', { class: `row between ${l.valid ? '' : 'dim'}` }, h('span', { class: 'mono' }, fmtTime(l.time)), h('span', null, l.valid ? '' : t('pause.invalid')))),
           ) : null,
         ),
       );

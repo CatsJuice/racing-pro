@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { Screen } from '../app';
 import { getPrefs, listCars, saveTrack, setPrefs, uid } from '../core/storage';
 import { toRace, toTracks } from '../nav';
@@ -32,7 +33,7 @@ export class TrackEditorScreen implements Screen {
     this.isNew = !track;
     this.data = track
       ? { ...track, points: track.points.map((p) => ({ ...p })) }
-      : { id: uid('trk-'), name: '我的赛道', width: 13, points: [] };
+      : { id: uid('trk-'), name: t('editor.defaultName'), width: 13, points: [] };
     this.tool = this.data.points.length ? 'edit' : 'draw';
   }
 
@@ -41,7 +42,7 @@ export class TrackEditorScreen implements Screen {
     this.canvas = h('canvas', { class: 'editor-canvas' });
     this.wrap = h('div', { class: 'editor-stage' }, this.canvas);
     this.infoEl = h('div', { class: 'editor-info' });
-    const nameInput = h('input', { class: 'text', value: this.data.name, maxlength: 24, oninput: (e: Event) => { this.data.name = (e.target as HTMLInputElement).value || '未命名赛道'; this.dirty = true; } });
+    const nameInput = h('input', { class: 'text', value: this.data.name, maxlength: 24, oninput: (e: Event) => { this.data.name = (e.target as HTMLInputElement).value || t('editor.unnamed'); this.dirty = true; } });
     const widthVal = h('span', { class: 'mono' }, `${this.data.width} m`);
     const width = h('input', { type: 'range', min: '8', max: '24', step: '0.5', value: String(this.data.width) });
     width.addEventListener('pointerdown', () => this.pushHistory());
@@ -49,35 +50,35 @@ export class TrackEditorScreen implements Screen {
     const spacingVal = h('span', { class: 'mono' }, `${this.spacing} m`);
     const spacing = h('input', { type: 'range', min: '14', max: '70', step: '1', value: String(this.spacing) });
     spacing.addEventListener('input', () => { this.spacing = parseFloat(spacing.value); spacingVal.textContent = `${this.spacing} m`; });
-    this.toolBtns.draw = h('button', { class: 'seg-btn', onclick: () => this.setTool('draw') }, '✏️ 手绘');
-    this.toolBtns.edit = h('button', { class: 'seg-btn', onclick: () => this.setTool('edit') }, '🔘 编辑节点');
-    this.startBtn = h('button', { class: 'btn small', disabled: true, onclick: () => this.setStart() }, '🏁 设为起点');
+    this.toolBtns.draw = h('button', { class: 'seg-btn', onclick: () => this.setTool('draw') }, t('editor.draw'));
+    this.toolBtns.edit = h('button', { class: 'seg-btn', onclick: () => this.setTool('edit') }, t('editor.editNodes'));
+    this.startBtn = h('button', { class: 'btn small', disabled: true, onclick: () => this.setStart() }, t('editor.setStart'));
 
     root.append(
       this.wrap,
       h('div', { class: 'editor-side panel' },
-        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.back() }, '← 返回'), h('h2', null, this.isNew ? '新建赛道' : '编辑赛道')),
-        h('div', { class: 'field' }, h('label', null, '名称'), nameInput),
-        h('div', { class: 'field' }, h('label', null, '工具'), h('div', { class: 'seg' }, this.toolBtns.draw, this.toolBtns.edit)),
-        h('div', { class: 'field' }, h('div', { class: 'row between' }, h('label', null, '赛道宽度'), widthVal), width),
-        h('div', { class: 'field' }, h('div', { class: 'row between' }, h('label', null, '手绘节点间距（越大越平滑）'), spacingVal), spacing),
+        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.back() }, t('common.back')), h('h2', null, this.isNew ? t('editor.newTitle') : t('editor.editTitle'))),
+        h('div', { class: 'field' }, h('label', null, t('editor.name')), nameInput),
+        h('div', { class: 'field' }, h('label', null, t('editor.tool')), h('div', { class: 'seg' }, this.toolBtns.draw, this.toolBtns.edit)),
+        h('div', { class: 'field' }, h('div', { class: 'row between' }, h('label', null, t('editor.width')), widthVal), width),
+        h('div', { class: 'field' }, h('div', { class: 'row between' }, h('label', null, t('editor.spacing')), spacingVal), spacing),
         h('div', { class: 'row wrap' },
-          h('button', { class: 'btn small', onclick: () => this.undo() }, '↶ 撤销'),
-          h('button', { class: 'btn small', onclick: () => this.reverse() }, '⇄ 反向行驶'),
+          h('button', { class: 'btn small', onclick: () => this.undo() }, t('editor.undo')),
+          h('button', { class: 'btn small', onclick: () => this.reverse() }, t('editor.reverse')),
           this.startBtn,
-          h('button', { class: 'btn small', onclick: () => this.fit() }, '⤢ 适配视图'),
-          h('button', { class: 'btn small', onclick: () => this.random() }, '🎲 随机生成'),
-          h('button', { class: 'btn small danger', onclick: () => this.clearAll() }, '清空'),
+          h('button', { class: 'btn small', onclick: () => this.fit() }, t('editor.fit')),
+          h('button', { class: 'btn small', onclick: () => this.random() }, t('editor.random')),
+          h('button', { class: 'btn small danger', onclick: () => this.clearAll() }, t('common.clear')),
         ),
         this.infoEl,
         h('div', { class: 'help dim' },
-          h('p', null, h('b', null, '手绘：'), '按住左键画一个圈，松开自动闭合并转换为控制点。'),
-          h('p', null, h('b', null, '编辑：'), '拖动节点移动；点击路面插入节点；双击或右键节点删除；点击节点选中后可“设为起点”。'),
-          h('p', null, h('b', null, '视图：'), '滚轮缩放；右键/中键/空格+拖动 平移。黄色箭头为行驶方向，黑白线为起点。'),
+          h('p', null, h('b', null, t('editor.helpDrawT')), t('editor.helpDraw')),
+          h('p', null, h('b', null, t('editor.helpEditT')), t('editor.helpEdit')),
+          h('p', null, h('b', null, t('editor.helpViewT')), t('editor.helpView')),
         ),
         h('div', { class: 'row editor-actions' },
-          h('button', { class: 'btn primary', onclick: () => this.save() }, '💾 保存'),
-          h('button', { class: 'btn go', onclick: () => this.save(true) }, '保存并试驾 ▶'),
+          h('button', { class: 'btn primary', onclick: () => this.save() }, t('editor.save')),
+          h('button', { class: 'btn go', onclick: () => this.save(true) }, t('editor.saveDrive')),
         ),
       ),
     );
@@ -148,7 +149,7 @@ export class TrackEditorScreen implements Screen {
   }
 
   private async clearAll() {
-    if (this.data.points.length && !(await confirmDialog('清空所有控制点？', '清空'))) return;
+    if (this.data.points.length && !(await confirmDialog(t('editor.clearConfirm'), t('common.clear')))) return;
     this.pushHistory();
     this.data.points = [];
     this.setTool('draw');
@@ -180,7 +181,7 @@ export class TrackEditorScreen implements Screen {
   }
 
   private async back() {
-    if (this.dirty && !(await confirmDialog('有未保存的修改，确定离开吗？', '离开'))) return;
+    if (this.dirty && !(await confirmDialog(t('common.unsavedLeave'), t('common.leave')))) return;
     toTracks();
   }
 
@@ -188,15 +189,15 @@ export class TrackEditorScreen implements Screen {
     const issues = validateTrack(this.data);
     const errors = issues.filter((i) => i.level === 'error');
     if (errors.length) {
-      toast(errors[0].msg, 'bad', 3000);
+      toast(t(errors[0].code, errors[0].params), 'bad', 3000);
       return;
     }
     const warns = issues.filter((i) => i.level === 'warn');
-    if (warns.length && !(await confirmDialog(`${warns.map((w) => w.msg).join('；')}。仍然保存吗？`, '保存'))) return;
+    if (warns.length && !(await confirmDialog(t('editor.warnConfirm', { warns: warns.map((w) => t(w.code, w.params)).join('; ') }), t('common.save')))) return;
     saveTrack(this.data);
     this.dirty = false;
     this.isNew = false;
-    toast(`赛道「${this.data.name}」已保存`, 'good');
+    toast(t('editor.saved', { name: this.data.name }), 'good');
     if (drive) {
       const cars = listCars();
       const car = cars.find((c) => c.id === getPrefs().lastCar) ?? cars[0];
@@ -332,7 +333,7 @@ export class TrackEditorScreen implements Screen {
       let len = 0;
       for (let i = 1; i < s.length; i++) len += Math.hypot(s[i].x - s[i - 1].x, s[i].z - s[i - 1].z);
       if (len < 200) {
-        toast('画得太短了，至少 200 米', 'bad');
+        toast(t('editor.tooShort'), 'bad');
         this.render();
       } else {
         this.pushHistory();
@@ -364,7 +365,7 @@ export class TrackEditorScreen implements Screen {
 
   private deletePoint(i: number) {
     if (this.data.points.length <= 4) {
-      toast('至少保留 4 个控制点', 'bad');
+      toast(t('editor.minPoints'), 'bad');
       return;
     }
     this.pushHistory();
@@ -461,9 +462,9 @@ export class TrackEditorScreen implements Screen {
       ctx.fillStyle = 'rgba(27,29,42,0.7)';
       ctx.font = 'bold 22px "Baloo 2", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('按住鼠标，画出一个闭合的圈 ✏️', W / 2, H / 2);
+      ctx.fillText(t('editor.emptyHint'), W / 2, H / 2);
       ctx.font = '15px "Baloo 2", sans-serif';
-      ctx.fillText('或点右侧「🎲 随机生成」', W / 2, H / 2 + 28);
+      ctx.fillText(t('editor.emptyHint2'), W / 2, H / 2 + 28);
     }
     // scale bar
     const barM = steps.find((s) => s * v.scale >= 80) ?? 1000;
@@ -478,7 +479,7 @@ export class TrackEditorScreen implements Screen {
     const el = this.infoEl;
     el.innerHTML = '';
     if (this.data.points.length < 3) {
-      el.append(h('div', { class: 'dim' }, '还没有赛道'));
+      el.append(h('div', { class: 'dim' }, t('editor.none')));
       return;
     }
     const g = new TrackGeometry(this.data);
@@ -487,12 +488,12 @@ export class TrackEditorScreen implements Screen {
     const issues = validateTrack(this.data);
     el.append(
       h('div', { class: 'stat-row' },
-        h('div', null, h('small', null, '长度'), h('b', null, `${(g.length / 1000).toFixed(2)} km`)),
-        h('div', null, h('small', null, '弯道'), h('b', null, String(corners))),
-        h('div', null, h('small', null, '最小半径'), h('b', null, `${minR.toFixed(0)} m`)),
-        h('div', null, h('small', null, '节点'), h('b', null, String(this.data.points.length))),
+        h('div', null, h('small', null, t('editor.length')), h('b', null, `${(g.length / 1000).toFixed(2)} km`)),
+        h('div', null, h('small', null, t('editor.corners')), h('b', null, String(corners))),
+        h('div', null, h('small', null, t('editor.minRadius')), h('b', null, `${minR.toFixed(0)} m`)),
+        h('div', null, h('small', null, t('editor.points')), h('b', null, String(this.data.points.length))),
       ),
-      issues.length ? h('ul', { class: 'issues' }, issues.map((i) => h('li', { class: i.level }, i.msg))) : h('div', { class: 'ok' }, '✓ 赛道有效'),
+      issues.length ? h('ul', { class: 'issues' }, issues.map((i) => h('li', { class: i.level }, t(i.code, i.params)))) : h('div', { class: 'ok' }, t('editor.valid')),
     );
   }
 

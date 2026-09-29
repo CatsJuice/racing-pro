@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 type Child = Node | string | number | null | undefined | false | Child[];
 type Props = Record<string, any> & { class?: string; style?: string | Partial<CSSStyleDeclaration> };
 
@@ -42,14 +43,14 @@ export function toast(msg: string, kind: 'info' | 'good' | 'bad' = 'info', ms = 
   setTimeout(() => t.remove(), ms + 400);
 }
 
-export function confirmDialog(msg: string, okLabel = '确定'): Promise<boolean> {
+export function confirmDialog(msg: string, okLabel = t('common.ok')): Promise<boolean> {
   return new Promise((resolve) => {
     const close = (v: boolean) => { wrap.remove(); resolve(v); };
     const wrap = h('div', { class: 'modal-wrap' },
       h('div', { class: 'modal panel' },
         h('p', null, msg),
         h('div', { class: 'row end' },
-          h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'),
+          h('button', { class: 'btn ghost', onclick: () => close(false) }, t('common.cancel')),
           h('button', { class: 'btn danger', onclick: () => close(true) }, okLabel),
         ),
       ),
