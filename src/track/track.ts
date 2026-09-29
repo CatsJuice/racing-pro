@@ -1,3 +1,5 @@
+import { REAL_TRACKS } from './realTracks';
+
 export interface Vec2 {
   x: number;
   z: number;
@@ -169,13 +171,61 @@ export class TrackGeometry {
     return { index: best, s, lateral, dist: Math.sqrt(bestD) };
   }
 
-  /** Minimum distance from point to the centre line (coarse, global). */
-  distanceTo(x: number, z: number, stride = 3): number {
+  private grid: Map<number, number[]> | null = null;
+  private static CELL = 24;
+
+  private cellKey(cx: number, cz: number) {
+    return (cx + 32768) * 65536 + (cz + 32768);
+  }
+
+  /** Uniform grid over the samples for fast proximity queries. */
+  private buildGrid() {
+    const g = new Map<number, number[]>();
+    const C = TrackGeometry.CELL;
+    this.samples.forEach((c, i) => {
+      const k = this.cellKey(Math.floor(c.x / C), Math.floor(c.z / C));
+      let arr = g.get(k);
+      if (!arr) g.set(k, (arr = []));
+      arr.push(i);
+    });
+    this.grid = g;
+    return g;
+  }
+
+  /** Indices of samples within `r` metres of (x, z). */
+  samplesNear(x: number, z: number, r: number): number[] {
+    const g = this.grid ?? this.buildGrid();
+    const C = TrackGeometry.CELL;
+    const out: number[] = [];
+    const r2 = r * r;
+    for (let cx = Math.floor((x - r) / C); cx <= Math.floor((x + r) / C); cx++) {
+      for (let cz = Math.floor((z - r) / C); cz <= Math.floor((z + r) / C); cz++) {
+        const arr = g.get(this.cellKey(cx, cz));
+        if (!arr) continue;
+        for (const i of arr) {
+          const c = this.samples[i];
+          if ((c.x - x) ** 2 + (c.z - z) ** 2 <= r2) out.push(i);
+        }
+      }
+    }
+    return out;
+  }
+
+  /** Minimum distance from point to the centre line. */
+  distanceTo(x: number, z: number): number {
+    // search growing radii through the grid, fall back to a coarse global scan
+    for (const r of [30, 90, 240]) {
+      const near = this.samplesNear(x, z, r);
+      if (near.length) {
+        let best = Infinity;
+        for (const i of near) best = Math.min(best, (this.samples[i].x - x) ** 2 + (this.samples[i].z - z) ** 2);
+        return Math.sqrt(best);
+      }
+    }
     let best = Infinity;
-    for (let i = 0; i < this.samples.length; i += stride) {
+    for (let i = 0; i < this.samples.length; i += 3) {
       const c = this.samples[i];
-      const d = (c.x - x) ** 2 + (c.z - z) ** 2;
-      if (d < best) best = d;
+      best = Math.min(best, (c.x - x) ** 2 + (c.z - z) ** 2);
     }
     return Math.sqrt(best);
   }
@@ -305,4 +355,5 @@ export const BUILTIN_TRACKS: TrackData[] = [
       [-60, 442], [-222, 380], [-302, 240], [-262, 100], [-140, 20],
     ]),
   },
+  ...REAL_TRACKS,
 ];

@@ -210,11 +210,9 @@ export class TrackScene {
       for (const side of [1, -1]) {
         const px = c.x + c.nx * off * side, pz = c.z + c.nz * off * side;
         let ok = true;
-        for (let j = 0; j < N; j += 2) {
+        for (const j of g.samplesNear(px, pz, clearance)) {
           const d = Math.abs(g.samples[j].s - c.s);
-          if (Math.min(d, g.length - d) < off * 1.5) continue;
-          const q = g.samples[j];
-          if ((q.x - px) ** 2 + (q.z - pz) ** 2 < clearance * clearance) { ok = false; break; }
+          if (Math.min(d, g.length - d) >= off * 1.5) { ok = false; break; }
         }
         (side > 0 ? this.barrierL : this.barrierR)[i] = ok ? 1 : 0;
       }
@@ -513,7 +511,7 @@ export class TrackScene {
   }
 
   private free(x: number, z: number, r: number, trackGap: number) {
-    if (this.geo.distanceTo(x, z, 2) < this.geo.width / 2 + trackGap + r) return false;
+    if (this.geo.distanceTo(x, z) < this.geo.width / 2 + trackGap + r) return false;
     return this.occupied.every((o) => (o.x - x) ** 2 + (o.z - z) ** 2 > (o.r + r) ** 2);
   }
 
@@ -678,7 +676,7 @@ export class TrackScene {
       const lat = hw + KERB_W + 1.2 + Math.pow(R.next(), 1.8) * 55; // denser close to the tarmac
       if (this.gravel[i] === side && lat < hw + KERB_W + GRAVEL_W + 1) continue;
       const p = this.at(i, lat * side);
-      if (g.distanceTo(p.x, p.z, 3) < hw + KERB_W + 1) continue;
+      if (g.distanceTo(p.x, p.z) < hw + KERB_W + 1) continue;
       const roll = R.next();
       const list = roll < 0.6 ? tufts : roll < 0.78 ? greenTufts : roll < 0.9 ? tall : flowers;
       list.push({ x: p.x, z: p.z, rot: R.range(0, 6.28), scale: R.range(0.8, 1.6) });
