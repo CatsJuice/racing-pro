@@ -4,7 +4,7 @@ import { CarVisual } from '../car/carVisual';
 import type { CarSetup } from '../car/setup';
 import { getAssets, part } from '../render/assets';
 import { Environment } from '../render/environment';
-import { getStage, toon, toonify } from '../render/toon';
+import { getStage, toon, toonify, viewSize } from '../render/toon';
 
 /** Turntable scene for the menu and garage. */
 export class Showroom {
@@ -153,7 +153,7 @@ export class Showroom {
     this.turntable.rotation.y = this.spin;
     this.controls?.update();
     const stage = getStage();
-    const W = window.innerWidth, H = window.innerHeight;
+    const { w: W, h: H } = viewSize();
     this.camera.clearViewOffset();
     if (this.offsetX || this.offsetY) this.camera.setViewOffset(W, H, -this.offsetX * W, this.offsetY * H, W, H);
     this.env.update(dt, performance.now() / 1000);

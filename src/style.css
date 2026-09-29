@@ -50,9 +50,18 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
-#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
-#ui { position: fixed; inset: 0; pointer-events: none; }
+/*
+ * The canvas and UI root are absolutely positioned in a full-height body rather than
+ * position: fixed — recent iOS Safari keeps fixed layers out of the areas behind its bars and
+ * the status bar (leaving an empty strip), while in-flow content extends edge to edge with
+ * viewport-fit=cover.
+ */
+body { position: relative; }
+#gl { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
 #ui > * { pointer-events: auto; }
+/* when the root itself is the scrolling screen it must receive touches, or touch scrolling dies */
+#ui.screen { pointer-events: auto; }
 h1, h2, h3 { margin: 0; line-height: 1.1; font-family: var(--font-display); letter-spacing: 0.2px; }
 h1 { font-size: 34px; font-weight: 800; }
 h2 { font-size: 21px; font-weight: 800; }

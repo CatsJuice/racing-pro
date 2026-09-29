@@ -10,7 +10,7 @@ import { toLeaderboard, toReplay } from '../nav';
 import { loadAssets } from '../render/assets';
 import { Environment } from '../render/environment';
 import { FallingLeaves } from '../game/effects';
-import { getStage } from '../render/toon';
+import { getStage, viewSize } from '../render/toon';
 import { timeControls } from '../ui/timeControls';
 import { TrackScene } from '../track/trackScene';
 import { h } from '../ui/dom';
@@ -547,7 +547,7 @@ export class ReplayScreen implements Screen {
     this.env.follow(this.controls.target.x, this.controls.target.z);
     const camDist = this.camera.position.distanceTo(this.controls.target);
     // roughly constant on screen (~5 px for the main line), but never wider than a slice of the road
-    const pxWorld = (2 * camDist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / window.innerHeight;
+    const pxWorld = (2 * camDist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / viewSize().h;
     const roadW = this.track.geo.width;
     for (const l of [this.line, this.cmpLine]) {
       if (!l) continue;

@@ -58,6 +58,13 @@ export interface Stage {
 
 let stage: Stage | null = null;
 
+/** CSS size of the 3D canvas (falls back to the window before layout). */
+export function viewSize() {
+  const c = document.getElementById('gl');
+  const w = c?.clientWidth || window.innerWidth, h = c?.clientHeight || window.innerHeight;
+  return { w, h };
+}
+
 export function getStage(): Stage {
   if (stage) return stage;
   const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -69,16 +76,24 @@ export function getStage(): Stage {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   const post = new PostFX(renderer);
+  // size from the canvas box itself: on iOS it can extend under the browser bars, beyond innerHeight
+  let lastW = 0, lastH = 0;
   const resize = () => {
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
-    post.setSize(window.innerWidth, window.innerHeight);
+    const { w, h } = viewSize();
+    if (w === lastW && h === lastH) return;
+    lastW = w;
+    lastH = h;
+    renderer.setSize(w, h, false);
+    post.setSize(w, h);
   };
   window.addEventListener('resize', resize);
+  new ResizeObserver(resize).observe(canvas);
   resize();
   const start = performance.now();
   const render = (scene: THREE.Scene, camera: THREE.PerspectiveCamera, env?: Environment) => {
     wind.value = (performance.now() - start) / 1000;
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const { w, h } = viewSize();
+    camera.aspect = w / h;
     // portrait screens: widen the vertical fov so the horizontal view doesn't collapse
     const fov = camera.fov;
     if (camera.aspect < 1) {
