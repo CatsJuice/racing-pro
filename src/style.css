@@ -438,3 +438,4 @@ body.rewinding #gl { filter: saturate(0.15) sepia(0.45) hue-rotate(175deg) contr
 }
 .lang-picker select { font: inherit; border: 0; background: transparent; color: inherit; cursor: pointer; outline: none; }
 .menu-top-right.row { gap: 12px; }
+.track-sections { display: flex; flex-direction: column; gap: 14px; }

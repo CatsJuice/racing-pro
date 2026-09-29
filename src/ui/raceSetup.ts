@@ -26,7 +26,7 @@ export class RaceSetupScreen implements Screen {
     const prefs = getPrefs();
     this.track = tracks.find((t) => t.id === prefs.lastTrack) ?? tracks[0];
     this.car = cars.find((c) => c.id === prefs.lastCar) ?? cars[0];
-    this.trackGrid = h('div', { class: 'track-grid' });
+    this.trackGrid = h('div', { class: 'track-sections' });
     this.carList = h('div', { class: 'car-list big' });
     this.summary = h('div', { class: 'setup-summary' });
     root.append(
@@ -56,11 +56,11 @@ export class RaceSetupScreen implements Screen {
       if (!list.length) continue;
       const grid = h('div', { class: 'track-grid' });
       this.trackGrid.append(h('div', { class: 'track-section' }, h('h3', null, title), grid));
-      for (const tr of list) this.trackCard(tr, tracks, grid);
+      for (const tr of list) this.trackCard(tr, grid);
     }
   }
 
-  private trackCard(tr: TrackData, tracks: TrackData[], grid: HTMLElement) {
+  private trackCard(tr: TrackData, grid: HTMLElement) {
     {
       const geo = new TrackGeometry(tr);
       const best = h('span', { class: 'mono' }, '…');
@@ -70,7 +70,12 @@ export class RaceSetupScreen implements Screen {
         record.lastChild!.textContent = b.entries[0] ? `${fmtTime(b.entries[0].time)} · ${b.entries[0].name}` : t('setup.noRecord');
       }).catch(() => (record.lastChild!.textContent = t('common.offline')));
       grid.append(
-        h('div', { class: `track-card ${tr.id === this.track.id ? 'on' : ''}`, onclick: () => { this.track = tr; this.renderTracks(tracks); this.renderSummary(); } },
+        h('div', { class: `track-card ${tr.id === this.track.id ? 'on' : ''}`, onclick: (e: Event) => {
+          this.track = tr;
+          this.trackGrid.querySelectorAll('.track-card.on').forEach((el) => el.classList.remove('on'));
+          (e.currentTarget as HTMLElement).classList.add('on');
+          this.renderSummary();
+        } },
           trackThumb(tr, 200, 120),
           h('div', { class: 'tc-body' },
             h('b', null, trackName(tr)),
