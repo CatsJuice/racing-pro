@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Environment } from './environment';
 import { PostFX } from './post';
+import { isTouch } from '../ui/device';
 
 let gradient: THREE.DataTexture | null = null;
 
@@ -61,7 +62,8 @@ export function getStage(): Stage {
   if (stage) return stage;
   const canvas = document.getElementById('gl') as HTMLCanvasElement;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+  // phones have tiny pixels and a weaker GPU; the ink/bloom passes run at full resolution
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.3 : 1.75));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -77,8 +79,15 @@ export function getStage(): Stage {
   const render = (scene: THREE.Scene, camera: THREE.PerspectiveCamera, env?: Environment) => {
     wind.value = (performance.now() - start) / 1000;
     camera.aspect = window.innerWidth / window.innerHeight;
+    // portrait screens: widen the vertical fov so the horizontal view doesn't collapse
+    const fov = camera.fov;
+    if (camera.aspect < 1) {
+      const half = Math.atan(Math.tan(THREE.MathUtils.degToRad(fov) / 2) / Math.pow(camera.aspect, 0.7));
+      camera.fov = THREE.MathUtils.radToDeg(half * 2);
+    }
     camera.updateProjectionMatrix();
     post.render(scene, camera, env);
+    camera.fov = fov;
   };
   stage = { renderer, post, render, resize };
   return stage;

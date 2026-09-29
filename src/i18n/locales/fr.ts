@@ -463,6 +463,17 @@ const fr: Partial<Record<Key, string>> = {
   'err.lapGone': 'Tour introuvable (le pilote l’a peut-être amélioré)',
   'err.server': 'Erreur du serveur',
   'err.notFound': 'Introuvable',
+  'touch.steer': 'Direction',
+  'touch.buttons': 'Boutons',
+  'touch.tilt': 'Inclinaison',
+  'touch.rotate': 'Passez en paysage pour une meilleure expérience',
+  'touch.tiltDenied': 'Capteur de mouvement indisponible — boutons utilisés',
+  'touch.tapToDismiss': 'Touchez pour continuer',
+  'editor.deletePoint': '🗑 Supprimer le point',
+  'editor.helpDrawTouch': 'glissez un doigt pour tracer une boucle ; relâchez pour la fermer en points de contrôle.',
+  'editor.helpEditTouch': 'glissez les points pour les déplacer ; touchez la piste pour en ajouter ; sélectionnez un point pour le supprimer ou en faire le départ.',
+  'editor.helpViewTouch': 'pincez pour zoomer, glissez à deux doigts pour déplacer. Les flèches jaunes indiquent le sens, la ligne en damier le départ.',
+  'replay.helpTouch': 'Glisser pour pivoter · pincer pour zoomer · deux doigts pour déplacer',
   'names.pool': 'Éclair,Roi du drift,Chasseur de cordes,Pied au plancher,Turbo,Fantôme,Freinage tardif,Corde intérieure,Chasseur de chrono,Brûle-gomme',
 };
 

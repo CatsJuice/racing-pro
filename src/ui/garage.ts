@@ -6,6 +6,7 @@ import { deleteCar, getPrefs, listCars, listTracks, saveCar, setPrefs, uid } fro
 import { toMenu, toRace } from '../nav';
 import { h, confirmDialog, toast } from './dom';
 import { Showroom } from './showroom';
+import { isCompact, isPortrait } from './device';
 
 export class GarageScreen implements Screen {
   private room!: Showroom;
@@ -296,7 +297,12 @@ export class GarageScreen implements Screen {
   }
 
   update(dt: number) {
-    this.room?.render(dt);
+    if (!this.room) return;
+    // on phones the tuning panel covers the right half (landscape) or bottom half (portrait)
+    const compact = isCompact(), portrait = isPortrait();
+    this.room.offsetX = compact && !portrait ? -0.25 : 0;
+    this.room.offsetY = compact ? (portrait ? 0.2 : 0.06) : 0;
+    this.room.render(dt);
   }
 
   unmount() {

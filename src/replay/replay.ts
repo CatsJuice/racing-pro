@@ -14,6 +14,7 @@ import { getStage } from '../render/toon';
 import { timeControls } from '../ui/timeControls';
 import { TrackScene } from '../track/trackScene';
 import { h } from '../ui/dom';
+import { isTouch } from '../ui/device';
 import { cssColor, frameCount, get, sampleAt, speedColor, timeAtDistance } from './frames';
 
 type ColorMode = 'speed' | 'pedal';
@@ -332,7 +333,7 @@ export class ReplayScreen implements Screen {
         h('div', { class: 'pedals' }, h('div', { class: 'pedal' }, this.ui.brk), h('div', { class: 'pedal' }, this.ui.thr)),
         legend,
         h('details', { class: 'time-details' }, h('summary', null, t('time.settings')), timeControls(this.env)),
-        h('div', { class: 'hint dim' }, t('replay.help'), h('br'), t('replay.help2')),
+        h('div', { class: 'hint dim' }, isTouch ? t('replay.helpTouch') : [t('replay.help'), h('br'), t('replay.help2')]),
       ),
       h('div', { class: 'replay-bottom panel' },
         h('div', { class: 'row' }, playBtn, this.scrub),

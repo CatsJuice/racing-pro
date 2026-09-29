@@ -463,6 +463,17 @@ const vi: Partial<Record<Key, string>> = {
   'err.lapGone': 'Không tìm thấy vòng (có thể tay đua đã cải thiện)',
   'err.server': 'Lỗi máy chủ',
   'err.notFound': 'Không tìm thấy',
+  'touch.steer': 'Lái',
+  'touch.buttons': 'Nút bấm',
+  'touch.tilt': 'Nghiêng',
+  'touch.rotate': 'Xoay ngang màn hình để chơi tốt nhất',
+  'touch.tiltDenied': 'Không dùng được cảm biến chuyển động — chuyển sang nút bấm',
+  'touch.tapToDismiss': 'Chạm để tiếp tục',
+  'editor.deletePoint': '🗑 Xóa điểm',
+  'editor.helpDrawTouch': 'kéo một ngón tay để vẽ một vòng; nhấc tay lên sẽ khép vòng thành các điểm điều khiển.',
+  'editor.helpEditTouch': 'kéo điểm để di chuyển; chạm vào đường để thêm; chọn một điểm để xóa hoặc đặt làm xuất phát.',
+  'editor.helpViewTouch': 'chụm hai ngón để phóng to, kéo hai ngón để di chuyển. Mũi tên vàng chỉ hướng, vạch caro là xuất phát.',
+  'replay.helpTouch': 'Kéo để xoay · chụm để phóng to · hai ngón để di chuyển',
   'names.pool': 'Tia Chớp,Vua Drift,Thợ Săn Đỉnh Cua,Đạp Lút Ga,Turbo,Bóng Ma Đường Đua,Phanh Muộn,Tay Đua Đêm,Săn Vòng,Đốt Lốp',
 };
 

@@ -463,6 +463,17 @@ const ja: Partial<Record<Key, string>> = {
   'err.lapGone': '記録が見つかりません（本人が更新した可能性があります）',
   'err.server': 'サーバーエラー',
   'err.notFound': '見つかりません',
+  'touch.steer': 'ステアリング',
+  'touch.buttons': 'ボタン',
+  'touch.tilt': '傾き',
+  'touch.rotate': '横向きでのプレイがおすすめです',
+  'touch.tiltDenied': 'モーションセンサーが使えないためボタン操作にしました',
+  'touch.tapToDismiss': 'タップして続ける',
+  'editor.deletePoint': '🗑 ポイント削除',
+  'editor.helpDrawTouch': '指でなぞってループを描き、離すと閉じてコントロールポイントになります。',
+  'editor.helpEditTouch': 'ポイントをドラッグで移動、コースをタップで追加、ポイントを選んで削除やスタート設定ができます。',
+  'editor.helpViewTouch': 'ピンチでズーム、2本指ドラッグで移動。黄色の矢印が進行方向、チェッカーの線がスタートです。',
+  'replay.helpTouch': 'ドラッグで回転 · ピンチでズーム · 2本指で移動',
   'names.pool': 'イナズマ,ドリフト王,コーナーの鬼,全開,ターボ,コースの亡霊,遅ブレーキ,インベタ,タイムハンター,タイヤ焼き',
 };
 

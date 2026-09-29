@@ -11,6 +11,7 @@ import { isOfficial } from '../track/official';
 import { h } from './dom';
 import { timeControls } from './timeControls';
 import { playerBadge } from './profile';
+import { enterLandscape } from './device';
 
 export class RaceSetupScreen implements Screen {
   private track!: TrackData;
@@ -125,6 +126,8 @@ export class RaceSetupScreen implements Screen {
 
   private start() {
     setPrefs({ lastTrack: this.track.id, lastCar: this.car.id });
+    // fullscreen / orientation lock need the tap's user activation
+    void enterLandscape();
     toRace(this.track, this.car);
   }
 

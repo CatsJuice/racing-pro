@@ -463,6 +463,17 @@ const es: Partial<Record<Key, string>> = {
   'err.lapGone': 'Vuelta no encontrada (puede que el piloto la haya mejorado)',
   'err.server': 'Error del servidor',
   'err.notFound': 'No encontrado',
+  'touch.steer': 'Dirección',
+  'touch.buttons': 'Botones',
+  'touch.tilt': 'Inclinación',
+  'touch.rotate': 'Gira a horizontal para una mejor experiencia',
+  'touch.tiltDenied': 'Sensor de movimiento no disponible — usando botones',
+  'touch.tapToDismiss': 'Toca para continuar',
+  'editor.deletePoint': '🗑 Borrar punto',
+  'editor.helpDrawTouch': 'arrastra un dedo para dibujar un circuito; al soltar se cierra y se convierte en puntos de control.',
+  'editor.helpEditTouch': 'arrastra puntos para moverlos; toca la pista para añadir uno; selecciona un punto para borrarlo o hacerlo salida.',
+  'editor.helpViewTouch': 'pellizca para hacer zoom, arrastra con dos dedos para desplazar. Las flechas amarillas marcan el sentido y la línea a cuadros la salida.',
+  'replay.helpTouch': 'Arrastra para girar · pellizca para zoom · dos dedos para desplazar',
   'names.pool': 'Relámpago,Rey del Drift,Cazavértices,A Fondo,Turbo,Fantasma,Frenada Tardía,Por Dentro,Cazavueltas,Quemagomas',
 };
 

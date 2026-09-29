@@ -463,6 +463,17 @@ const de: Partial<Record<Key, string>> = {
   'err.lapGone': 'Runde nicht gefunden (der Fahrer hat sie vielleicht verbessert)',
   'err.server': 'Serverfehler',
   'err.notFound': 'Nicht gefunden',
+  'touch.steer': 'Lenkung',
+  'touch.buttons': 'Tasten',
+  'touch.tilt': 'Neigen',
+  'touch.rotate': 'Im Querformat spielt es sich am besten',
+  'touch.tiltDenied': 'Bewegungssensor nicht verfügbar — Tasten werden verwendet',
+  'touch.tapToDismiss': 'Tippen zum Fortfahren',
+  'editor.deletePoint': '🗑 Punkt löschen',
+  'editor.helpDrawTouch': 'mit einem Finger eine Schleife ziehen; loslassen schließt sie und wandelt sie in Kontrollpunkte um.',
+  'editor.helpEditTouch': 'Punkte ziehen zum Verschieben; auf die Strecke tippen zum Hinzufügen; Punkt auswählen zum Löschen oder als Start festlegen.',
+  'editor.helpViewTouch': 'Zwei Finger zusammenziehen zum Zoomen, mit zwei Fingern ziehen zum Verschieben. Gelbe Pfeile zeigen die Richtung, die Schachbrettlinie ist der Start.',
+  'replay.helpTouch': 'Ziehen zum Drehen · Zwei Finger zum Zoomen und Verschieben',
   'names.pool': 'Blitz,Driftkönig,Scheitelpunktjäger,Vollgas,Turbo,Streckengeist,Spätbremser,Innenbahn,Rundenjäger,Gummiverbrenner',
 };
 

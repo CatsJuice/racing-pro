@@ -13,6 +13,9 @@ export class CarAudio {
 
   constructor() {
     const ctx = (this.ctx = new AudioContext());
+    // mobile browsers start the context suspended until a user gesture
+    window.addEventListener('pointerdown', this.unlock, true);
+    window.addEventListener('keydown', this.unlock, true);
     this.master = ctx.createGain();
     this.master.gain.value = 0.5;
     this.master.connect(ctx.destination);
@@ -96,7 +99,13 @@ export class CarAudio {
     o.stop(ctx.currentTime + 0.3);
   }
 
+  private unlock = () => {
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+  };
+
   dispose() {
+    window.removeEventListener('pointerdown', this.unlock, true);
+    window.removeEventListener('keydown', this.unlock, true);
     this.ctx.close();
   }
 }

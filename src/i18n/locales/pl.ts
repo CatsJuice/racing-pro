@@ -463,6 +463,17 @@ const pl: Partial<Record<Key, string>> = {
   'err.lapGone': 'Nie znaleziono okrążenia (kierowca mógł poprawić czas)',
   'err.server': 'Błąd serwera',
   'err.notFound': 'Nie znaleziono',
+  'touch.steer': 'Sterowanie',
+  'touch.buttons': 'Przyciski',
+  'touch.tilt': 'Przechył',
+  'touch.rotate': 'Obróć poziomo, aby grało się najlepiej',
+  'touch.tiltDenied': 'Czujnik ruchu niedostępny — używam przycisków',
+  'touch.tapToDismiss': 'Dotknij, aby kontynuować',
+  'editor.deletePoint': '🗑 Usuń punkt',
+  'editor.helpDrawTouch': 'przeciągnij palcem, aby narysować pętlę; puść, aby ją zamknąć w punkty kontrolne.',
+  'editor.helpEditTouch': 'przeciągaj punkty, aby je przesunąć; dotknij drogi, aby dodać; wybierz punkt, aby go usunąć lub ustawić jako start.',
+  'editor.helpViewTouch': 'uszczypnij, aby przybliżyć, przeciągnij dwoma palcami, aby przesunąć. Żółte strzałki to kierunek, szachownica to start.',
+  'replay.helpTouch': 'Przeciągnij, aby obrócić · uszczypnij, aby przybliżyć · dwa palce, aby przesunąć',
   'names.pool': 'Błyskawica,Król Driftu,Łowca Apeksów,Gaz do Dechy,Turbo,Duch Toru,Późne Hamowanie,Wewnętrzna,Łowca Okrążeń,Palacz Opon',
 };
 

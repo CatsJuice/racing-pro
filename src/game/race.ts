@@ -20,6 +20,8 @@ import { CarAudio } from './audio';
 import { FallingLeaves, SkidMarks, Smoke } from './effects';
 import { Hud } from './hud';
 import { Input } from './input';
+import { TouchControls } from './touchControls';
+import { enterLandscape, exitLandscape, isTouch } from '../ui/device';
 
 const CAMERA_KEYS = ['race.camChase', 'race.camFar', 'race.camHood', 'race.camHeli'] as const;
 const REWIND_SECONDS = 20;
@@ -62,6 +64,7 @@ export class RaceScreen implements Screen {
   private smoke = new Smoke();
   private leaves = new FallingLeaves();
   private root!: HTMLElement;
+  private touch: TouchControls | null = null;
   private pauseEl: HTMLElement | null = null;
   private paused = false;
   private camMode = 0;
@@ -155,6 +158,18 @@ export class RaceScreen implements Screen {
     this.hud = new Hud(this.trackData);
     root.append(this.hud.el);
     root.className = 'race';
+    if (isTouch) {
+      this.touch = new TouchControls(this.input, {
+        manualGears: !this.setup.autoShift,
+        mode: prefs.touchSteer,
+        onPause: () => { if (!this.paused) this.togglePause(); },
+      });
+      const hint = h('div', { class: 'rotate-hint', onclick: () => hint.remove() },
+        h('div', { class: 'rotate-icon' }, '📱'), h('b', null, t('touch.rotate')), h('small', { class: 'dim' }, t('touch.tapToDismiss')));
+      root.append(this.touch.el, hint);
+      void enterLandscape();
+    }
+    document.addEventListener('visibilitychange', this.onHidden);
 
     try {
       this.audio = new CarAudio();
@@ -718,6 +733,23 @@ export class RaceScreen implements Screen {
     this.invalidate(t('race.reason.assist'));
   }
 
+  private steerPicker(tc: TouchControls) {
+    const seg = h('div', { class: 'seg assist-seg' });
+    const render = () => {
+      seg.innerHTML = '';
+      seg.append(h('b', null, t('touch.steer')), ...(['buttons', 'tilt'] as const).map((m) => h('button', {
+        class: `seg-btn ${tc.steerMode === m ? 'on' : ''}`,
+        onclick: async () => {
+          const got = await tc.setMode(m);
+          setPrefs({ touchSteer: got });
+          render();
+        },
+      }, t(`touch.${m}`))));
+    };
+    render();
+    return seg;
+  }
+
   private togglePause() {
     this.paused = !this.paused;
     if (this.paused) {
@@ -739,6 +771,7 @@ export class RaceScreen implements Screen {
                 (e.currentTarget as HTMLElement).classList.add('on');
               },
             }, t('pause.assist', { level: t(`assist.${l}`) })))),
+            this.touch ? this.steerPicker(this.touch) : null,
             h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, t('pause.board')),
             this.official ? h('button', { class: 'btn', onclick: () => { this.togglePause(); this.challengeWorldRecord(); } }, t('pause.challengeWr')) : null,
             this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id, undefined, this.ghostLap!.online) }, t('pause.replayGhost')) : null,
@@ -758,7 +791,13 @@ export class RaceScreen implements Screen {
     }
   }
 
+  private onHidden = () => {
+    if (document.hidden && !this.paused && this.phys) this.togglePause();
+  };
+
   unmount() {
+    document.removeEventListener('visibilitychange', this.onHidden);
+    if (this.touch) { this.touch.dispose(); exitLandscape(); }
     document.body.classList.remove('rewinding');
     this.input.dispose();
     this.audio?.dispose();

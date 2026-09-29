@@ -463,6 +463,17 @@ const tr: Partial<Record<Key, string>> = {
   'err.lapGone': 'Tur bulunamadı (pilot geliştirmiş olabilir)',
   'err.server': 'Sunucu hatası',
   'err.notFound': 'Bulunamadı',
+  'touch.steer': 'Direksiyon',
+  'touch.buttons': 'Düğmeler',
+  'touch.tilt': 'Eğme',
+  'touch.rotate': 'En iyi deneyim için cihazı yatay çevir',
+  'touch.tiltDenied': 'Hareket sensörü kullanılamıyor — düğmeler kullanılıyor',
+  'touch.tapToDismiss': 'Devam etmek için dokun',
+  'editor.deletePoint': '🗑 Noktayı sil',
+  'editor.helpDrawTouch': 'parmağını sürükleyerek bir döngü çiz; bırakınca kapanır ve kontrol noktalarına dönüşür.',
+  'editor.helpEditTouch': 'noktaları sürükleyerek taşı; eklemek için piste dokun; silmek ya da başlangıç yapmak için bir nokta seç.',
+  'editor.helpViewTouch': 'yakınlaştırmak için iki parmakla sıkıştır, kaydırmak için iki parmakla sürükle. Sarı oklar yönü, damalı çizgi başlangıcı gösterir.',
+  'replay.helpTouch': 'Döndürmek için sürükle · yakınlaştırmak için sıkıştır · kaydırmak için iki parmak',
   'names.pool': 'Şimşek,Drift Kralı,Apeks Avcısı,Tam Gaz,Turbo,Pist Hayaleti,Geç Frenci,İç Hat,Tur Avcısı,Lastik Yakan',
 };
 

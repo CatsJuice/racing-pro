@@ -492,6 +492,19 @@ const en = {
   'err.server': 'Server error',
   'err.notFound': 'Not found',
 
+  // touch devices
+  'touch.steer': 'Steering',
+  'touch.buttons': 'Buttons',
+  'touch.tilt': 'Tilt',
+  'touch.rotate': 'Rotate to landscape for the best experience',
+  'touch.tiltDenied': 'Motion sensor unavailable — using buttons',
+  'touch.tapToDismiss': 'Tap to continue',
+  'editor.deletePoint': '🗑 Delete point',
+  'editor.helpDrawTouch': 'drag a finger to draw a loop; lift it to close the loop into control points.',
+  'editor.helpEditTouch': 'drag points to move them; tap the road to add one; select a point to delete it or make it the start.',
+  'editor.helpViewTouch': 'pinch to zoom, drag with two fingers to pan. Yellow arrows show the direction, the checkered line is the start.',
+  'replay.helpTouch': 'Drag to orbit · pinch to zoom · two fingers to pan',
+
   // random names
   'names.pool': 'Flash,Drifter,Apex Hunter,Flat Out,Turbo,Track Ghost,Late Braker,Inside Line,Lap Hunter,Rubber Burner',
 };

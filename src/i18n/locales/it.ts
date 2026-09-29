@@ -463,6 +463,17 @@ const it: Partial<Record<Key, string>> = {
   'err.lapGone': 'Giro non trovato (il pilota potrebbe averlo migliorato)',
   'err.server': 'Errore del server',
   'err.notFound': 'Non trovato',
+  'touch.steer': 'Sterzo',
+  'touch.buttons': 'Pulsanti',
+  'touch.tilt': 'Inclinazione',
+  'touch.rotate': 'Ruota in orizzontale per un’esperienza migliore',
+  'touch.tiltDenied': 'Sensore di movimento non disponibile — uso i pulsanti',
+  'touch.tapToDismiss': 'Tocca per continuare',
+  'editor.deletePoint': '🗑 Elimina punto',
+  'editor.helpDrawTouch': 'trascina un dito per disegnare un anello; rilascia per chiuderlo in punti di controllo.',
+  'editor.helpEditTouch': 'trascina i punti per spostarli; tocca la pista per aggiungerne uno; seleziona un punto per eliminarlo o renderlo la partenza.',
+  'editor.helpViewTouch': 'pizzica per lo zoom, trascina con due dita per spostare. Le frecce gialle indicano il senso, la linea a scacchi la partenza.',
+  'replay.helpTouch': 'Trascina per ruotare · pizzica per lo zoom · due dita per spostare',
   'names.pool': 'Fulmine,Re del drift,Cacciatore di corde,Tutto gas,Turbo,Fantasma,Staccata tardiva,All’interno,Cacciatore di giri,Bruciagomme',
 };
 

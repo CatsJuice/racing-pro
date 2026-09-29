@@ -1,5 +1,7 @@
 import './style.css';
+import './mobile.css';
 import { app } from './app';
+import { initDevice } from './ui/device';
 import { toMenu } from './nav';
 import { loadAssets } from './render/assets';
 import { getStage } from './render/toon';
@@ -7,6 +9,7 @@ import { h } from './ui/dom';
 import { initI18n, t } from './i18n';
 
 async function boot() {
+  initDevice();
   await initI18n();
   const stage = getStage();
   if (import.meta.env.DEV) (window as any).__rp = { app, stage };

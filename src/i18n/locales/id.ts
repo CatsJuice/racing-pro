@@ -463,6 +463,17 @@ const id: Partial<Record<Key, string>> = {
   'err.lapGone': 'Putaran tidak ditemukan (pembalap mungkin sudah memperbaikinya)',
   'err.server': 'Kesalahan server',
   'err.notFound': 'Tidak ditemukan',
+  'touch.steer': 'Kemudi',
+  'touch.buttons': 'Tombol',
+  'touch.tilt': 'Miringkan',
+  'touch.rotate': 'Putar ke mode lanskap untuk pengalaman terbaik',
+  'touch.tiltDenied': 'Sensor gerak tidak tersedia — memakai tombol',
+  'touch.tapToDismiss': 'Ketuk untuk lanjut',
+  'editor.deletePoint': '🗑 Hapus titik',
+  'editor.helpDrawTouch': 'seret satu jari untuk menggambar lingkaran; angkat jari untuk menutupnya menjadi titik kontrol.',
+  'editor.helpEditTouch': 'seret titik untuk memindahkan; ketuk jalan untuk menambah; pilih titik untuk menghapus atau menjadikannya start.',
+  'editor.helpViewTouch': 'cubit untuk zoom, seret dua jari untuk menggeser. Panah kuning menunjukkan arah, garis kotak-kotak adalah start.',
+  'replay.helpTouch': 'Seret untuk memutar · cubit untuk zoom · dua jari untuk menggeser',
   'names.pool': 'Kilat,Raja Drift,Pemburu Apex,Gas Pol,Turbo,Hantu Sirkuit,Rem Telat,Jalur Dalam,Pemburu Lap,Pembakar Ban',
 };
 

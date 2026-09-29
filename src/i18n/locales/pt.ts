@@ -463,6 +463,17 @@ const pt: Partial<Record<Key, string>> = {
   'err.lapGone': 'Volta não encontrada (o piloto pode tê-la melhorado)',
   'err.server': 'Erro do servidor',
   'err.notFound': 'Não encontrado',
+  'touch.steer': 'Direção',
+  'touch.buttons': 'Botões',
+  'touch.tilt': 'Inclinação',
+  'touch.rotate': 'Gire para paisagem para uma experiência melhor',
+  'touch.tiltDenied': 'Sensor de movimento indisponível — usando botões',
+  'touch.tapToDismiss': 'Toque para continuar',
+  'editor.deletePoint': '🗑 Apagar ponto',
+  'editor.helpDrawTouch': 'arraste um dedo para desenhar um circuito; solte para fechá-lo em pontos de controle.',
+  'editor.helpEditTouch': 'arraste pontos para movê-los; toque na pista para adicionar; selecione um ponto para apagá-lo ou torná-lo a largada.',
+  'editor.helpViewTouch': 'faça pinça para zoom, arraste com dois dedos para mover. Setas amarelas indicam o sentido, a linha quadriculada é a largada.',
+  'replay.helpTouch': 'Arraste para girar · pinça para zoom · dois dedos para mover',
   'names.pool': 'Relâmpago,Rei do Drift,Caçador de Tangência,Pé Embaixo,Turbo,Fantasma,Freada Tardia,Por Dentro,Caçador de Voltas,Queima-Pneu',
 };
 

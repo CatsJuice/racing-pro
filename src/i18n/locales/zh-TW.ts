@@ -463,6 +463,17 @@ const zhTW: Partial<Record<Key, string>> = {
   'err.lapGone': '記錄不存在（可能已被本人重新整理）',
   'err.server': '伺服器錯誤',
   'err.notFound': '未找到',
+  'touch.steer': '轉向',
+  'touch.buttons': '按鍵',
+  'touch.tilt': '重力感應',
+  'touch.rotate': '橫向遊玩體驗更佳',
+  'touch.tiltDenied': '無法使用重力感應，已切換為按鍵',
+  'touch.tapToDismiss': '點一下繼續',
+  'editor.deletePoint': '🗑 刪除節點',
+  'editor.helpDrawTouch': '單指拖曳畫一圈，放開後自動閉合並轉換為控制點。',
+  'editor.helpEditTouch': '拖曳節點移動位置；點一下賽道新增節點；選取節點後可刪除或設為起點。',
+  'editor.helpViewTouch': '雙指捏合縮放，雙指拖曳平移。黃色箭頭為行駛方向，棋盤格線為起點。',
+  'replay.helpTouch': '拖曳旋轉 · 雙指縮放 · 雙指拖曳平移',
   'names.pool': '閃電,漂移王,彎道狂魔,油門到底,極速,賽道幽靈,晚煞車,內線王,圈速獵人,橡膠燃燒者',
 };
 

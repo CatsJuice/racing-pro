@@ -87,6 +87,8 @@ export interface Prefs {
   /** game hours per real second */
   timeFlow?: number;
   dof?: boolean;
+  /** touch steering: on-screen buttons or device tilt */
+  touchSteer?: 'buttons' | 'tilt';
 }
 
 export function getPrefs(): Prefs {

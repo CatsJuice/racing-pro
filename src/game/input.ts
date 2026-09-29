@@ -7,7 +7,7 @@ export interface Controls {
   shiftDown: boolean;
 }
 
-type Action = 'up' | 'down' | 'left' | 'right' | 'hand' | 'shiftUp' | 'shiftDown' | 'reset' | 'rewind' | 'time' | 'camera' | 'pause' | 'ghost' | 'mute';
+export type Action = 'up' | 'down' | 'left' | 'right' | 'hand' | 'shiftUp' | 'shiftDown' | 'reset' | 'rewind' | 'time' | 'camera' | 'pause' | 'ghost' | 'mute';
 
 const KEYMAP: Record<string, Action> = {
   KeyW: 'up', ArrowUp: 'up',
@@ -55,6 +55,21 @@ export class Input {
 
   private onBlur = () => this.held.clear();
 
+  /** analog steering from tilt (+ left), overrides the digital left/right keys when set */
+  analogSteer: number | null = null;
+
+  /** virtual (touch) buttons feed the same held/pressed sets as the keyboard */
+  setHeld(a: Action, on: boolean) {
+    if (on) {
+      if (!this.held.has(a)) this.pressed.add(a);
+      this.held.add(a);
+    } else this.held.delete(a);
+  }
+
+  press(a: Action) {
+    this.pressed.add(a);
+  }
+
   private padRewind = false;
 
   /** rewind is a hold action (keyboard R or gamepad Y) */
@@ -72,6 +87,7 @@ export class Input {
   read(dt: number): Controls {
     const pad = navigator.getGamepads ? Array.from(navigator.getGamepads()).find((p) => p && p.connected) : null;
     let steer = (this.held.has('left') ? 1 : 0) - (this.held.has('right') ? 1 : 0);
+    if (this.analogSteer != null && !steer) steer = this.analogSteer;
     const up = this.held.has('up'), down = this.held.has('down');
     // keyboard pedals ramp for smoother inputs
     this.throttle += ((up ? 1 : 0) - this.throttle) * Math.min(1, dt * (up ? 9 : 14));

@@ -463,6 +463,17 @@ const zhCN: Partial<Record<Key, string>> = {
   'err.lapGone': '记录不存在（可能已被本人刷新）',
   'err.server': '服务器错误',
   'err.notFound': '未找到',
+  'touch.steer': '转向',
+  'touch.buttons': '按键',
+  'touch.tilt': '重力感应',
+  'touch.rotate': '横屏游玩体验更佳',
+  'touch.tiltDenied': '无法使用重力感应，已切换为按键',
+  'touch.tapToDismiss': '点击继续',
+  'editor.deletePoint': '🗑 删除节点',
+  'editor.helpDrawTouch': '单指拖动画一圈，松开后自动闭合并转换为控制点。',
+  'editor.helpEditTouch': '拖动节点移动位置；点击赛道添加节点；选中节点后可删除或设为起点。',
+  'editor.helpViewTouch': '双指捏合缩放，双指拖动平移。黄色箭头为行驶方向，棋盘格线为起点。',
+  'replay.helpTouch': '拖动旋转 · 双指缩放 · 双指拖动平移',
   'names.pool': '闪电,漂移王,弯道狂魔,油门到底,极速,赛道幽灵,晚刹车,内线王,圈速猎人,橡胶燃烧者',
 };
 

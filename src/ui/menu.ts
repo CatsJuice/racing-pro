@@ -1,5 +1,6 @@
 import { carName, t } from '../i18n';
 import { langPicker } from './langPicker';
+import { isCompact, isPortrait } from './device';
 import type { Screen } from '../app';
 import { getCar, getPrefs, listCars } from '../core/storage';
 import { toGarage, toLeaderboard, toRaceSetup, toTracks } from '../nav';
@@ -45,7 +46,12 @@ export class MenuScreen implements Screen {
   }
 
   update(dt: number) {
-    this.room?.render(dt);
+    if (!this.room) return;
+    // portrait phones: menu stacks below the car, so lift the car instead of shifting it right
+    const portrait = isPortrait() && isCompact();
+    this.room.offsetX = portrait ? 0 : 0.16;
+    this.room.offsetY = portrait ? 0.08 : 0;
+    this.room.render(dt);
   }
 
   unmount() {

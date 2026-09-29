@@ -18,6 +18,8 @@ export class Showroom {
   env: Environment;
   /** horizontal shift of the car in screen space (fraction of width) */
   offsetX = 0;
+  /** vertical shift of the car in screen space (fraction of height, + = up) */
+  offsetY = 0;
   private spin = 0;
 
   constructor(opts: { interactive?: boolean } = {}) {
@@ -96,7 +98,7 @@ export class Showroom {
     const stage = getStage();
     const W = window.innerWidth, H = window.innerHeight;
     this.camera.clearViewOffset();
-    if (this.offsetX) this.camera.setViewOffset(W, H, -this.offsetX * W, 0, W, H);
+    if (this.offsetX || this.offsetY) this.camera.setViewOffset(W, H, -this.offsetX * W, this.offsetY * H, W, H);
     this.env.update(dt, performance.now() / 1000);
     stage.post.dofStrength = 0;
     stage.render(this.scene, this.camera, this.env);

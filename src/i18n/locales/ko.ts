@@ -463,6 +463,17 @@ const ko: Partial<Record<Key, string>> = {
   'err.lapGone': '기록을 찾을 수 없습니다 (본인이 갱신했을 수 있음)',
   'err.server': '서버 오류',
   'err.notFound': '찾을 수 없음',
+  'touch.steer': '조향',
+  'touch.buttons': '버튼',
+  'touch.tilt': '기울기',
+  'touch.rotate': '가로 모드에서 더 즐겁게 플레이할 수 있어요',
+  'touch.tiltDenied': '모션 센서를 사용할 수 없어 버튼으로 전환했습니다',
+  'touch.tapToDismiss': '탭하여 계속',
+  'editor.deletePoint': '🗑 포인트 삭제',
+  'editor.helpDrawTouch': '손가락으로 드래그해 루프를 그리고, 떼면 닫히면서 제어점으로 변환됩니다.',
+  'editor.helpEditTouch': '포인트를 드래그해 이동, 도로를 탭해 추가, 포인트를 선택해 삭제하거나 출발점으로 지정합니다.',
+  'editor.helpViewTouch': '핀치로 확대/축소, 두 손가락 드래그로 이동. 노란 화살표는 주행 방향, 체크무늬 선은 출발선입니다.',
+  'replay.helpTouch': '드래그로 회전 · 핀치로 확대 · 두 손가락으로 이동',
   'names.pool': '번개,드리프트왕,코너귀신,풀스로틀,터보,트랙유령,늦은제동,인코스,랩헌터,타이어태우개',
 };
 

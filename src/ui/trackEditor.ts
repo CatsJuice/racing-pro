@@ -5,6 +5,7 @@ import { toRace, toTracks } from '../nav';
 import { drawTrack, fitView, makeView, type View2D } from '../track/draw2d';
 import { simplifyStroke, splinePolyline, TrackGeometry, validateTrack, type TrackData, type Vec2 } from '../track/track';
 import { confirmDialog, h, toast } from './dom';
+import { isTouch } from './device';
 
 type Tool = 'draw' | 'edit';
 
@@ -28,6 +29,11 @@ export class TrackEditorScreen implements Screen {
   private startBtn!: HTMLButtonElement;
   private ro: ResizeObserver | null = null;
   private spaceHeld = false;
+  private pointers = new Map<number, { x: number; y: number }>();
+  private pinch: { d: number; w: Vec2; s: number } | null = null;
+  private gestureAt = 0;
+  private insertedByGesture = false;
+  private delBtn!: HTMLButtonElement;
 
   constructor(track?: TrackData) {
     this.isNew = !track;
@@ -53,6 +59,8 @@ export class TrackEditorScreen implements Screen {
     this.toolBtns.draw = h('button', { class: 'seg-btn', onclick: () => this.setTool('draw') }, t('editor.draw'));
     this.toolBtns.edit = h('button', { class: 'seg-btn', onclick: () => this.setTool('edit') }, t('editor.editNodes'));
     this.startBtn = h('button', { class: 'btn small', disabled: true, onclick: () => this.setStart() }, t('editor.setStart'));
+    // double-click / right-click deletion has no touch equivalent
+    this.delBtn = h('button', { class: 'btn small', disabled: true, onclick: () => { if (this.selected >= 0) this.deletePoint(this.selected); } }, t('editor.deletePoint'));
 
     root.append(
       this.wrap,
@@ -66,15 +74,16 @@ export class TrackEditorScreen implements Screen {
           h('button', { class: 'btn small', onclick: () => this.undo() }, t('editor.undo')),
           h('button', { class: 'btn small', onclick: () => this.reverse() }, t('editor.reverse')),
           this.startBtn,
+          this.delBtn,
           h('button', { class: 'btn small', onclick: () => this.fit() }, t('editor.fit')),
           h('button', { class: 'btn small', onclick: () => this.random() }, t('editor.random')),
           h('button', { class: 'btn small danger', onclick: () => this.clearAll() }, t('common.clear')),
         ),
         this.infoEl,
         h('div', { class: 'help dim' },
-          h('p', null, h('b', null, t('editor.helpDrawT')), t('editor.helpDraw')),
-          h('p', null, h('b', null, t('editor.helpEditT')), t('editor.helpEdit')),
-          h('p', null, h('b', null, t('editor.helpViewT')), t('editor.helpView')),
+          h('p', null, h('b', null, t('editor.helpDrawT')), t(isTouch ? 'editor.helpDrawTouch' : 'editor.helpDraw')),
+          h('p', null, h('b', null, t('editor.helpEditT')), t(isTouch ? 'editor.helpEditTouch' : 'editor.helpEdit')),
+          h('p', null, h('b', null, t('editor.helpViewT')), t(isTouch ? 'editor.helpViewTouch' : 'editor.helpView')),
         ),
         h('div', { class: 'row editor-actions' },
           h('button', { class: 'btn primary', onclick: () => this.save() }, t('editor.save')),
@@ -233,7 +242,8 @@ export class TrackEditorScreen implements Screen {
   }
 
   private hitPoint(px: number, py: number) {
-    let best = -1, bd = 12 * 12;
+    const r = isTouch ? 24 : 12; // fingers are fatter than cursors
+    let best = -1, bd = r * r;
     this.data.points.forEach((p, i) => {
       const [x, y] = this.view.toScreen(p.x, p.z);
       const d = (x - px) ** 2 + (y - py) ** 2;
@@ -258,9 +268,26 @@ export class TrackEditorScreen implements Screen {
     return { seg: Math.floor(best / per), p: this.view.toWorld(px, py) };
   }
 
+  /** second finger down: abandon whatever the first finger started and pinch instead */
+  private startPinch() {
+    if (this.stroke) this.stroke = null;
+    // a quick tap on the road inserts a point; if it was really the start of a pinch, take it back
+    if (this.dragIdx >= 0 && performance.now() - this.gestureAt < 350 && this.insertedByGesture) this.undo();
+    this.dragIdx = -1;
+    this.panFrom = null;
+    const [a, b] = [...this.pointers.values()];
+    this.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, w: this.view.toWorld((a.x + b.x) / 2, (a.y + b.y) / 2), s: this.view.scale };
+    this.render();
+  }
+
   private onDown = (e: PointerEvent) => {
     const { x, y } = this.local(e);
     this.canvas.setPointerCapture(e.pointerId);
+    this.pointers.set(e.pointerId, { x, y });
+    if (this.pointers.size === 2) return this.startPinch();
+    if (this.pointers.size > 2) return;
+    this.gestureAt = performance.now();
+    this.insertedByGesture = false;
     const wantsPan = e.button === 1 || this.spaceHeld;
     if (e.button === 2) {
       const hit = this.hitPoint(x, y);
@@ -286,6 +313,7 @@ export class TrackEditorScreen implements Screen {
     const road = this.hitRoad(x, y);
     if (road) {
       this.pushHistory();
+      this.insertedByGesture = true;
       this.data.points.splice(road.seg + 1, 0, road.p);
       this.dragIdx = road.seg + 1;
       this.selected = this.dragIdx;
@@ -301,6 +329,18 @@ export class TrackEditorScreen implements Screen {
 
   private onMove = (e: PointerEvent) => {
     const { x, y } = this.local(e);
+    if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, { x, y });
+    if (this.pinch) {
+      if (this.pointers.size < 2) return;
+      const [a, b] = [...this.pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const s = Math.max(0.08, Math.min(10, this.pinch.s * (d / this.pinch.d)));
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      // keep the world point that started under the fingers' midpoint under it
+      this.view = makeView(s, mx - this.pinch.w.x * s, my - this.pinch.w.z * s);
+      this.render();
+      return;
+    }
     if (this.panFrom) {
       this.view = makeView(this.view.scale, this.panFrom.ox + x - this.panFrom.x, this.panFrom.oy + y - this.panFrom.y);
       this.render();
@@ -326,7 +366,12 @@ export class TrackEditorScreen implements Screen {
     }
   };
 
-  private onUp = () => {
+  private onUp = (e: PointerEvent) => {
+    this.pointers.delete(e.pointerId);
+    if (this.pinch) {
+      if (this.pointers.size === 0) this.pinch = null;
+      return;
+    }
     if (this.stroke) {
       const s = this.stroke;
       this.stroke = null;
@@ -390,6 +435,7 @@ export class TrackEditorScreen implements Screen {
   private render() {
     const c = this.canvas;
     if (!c) return;
+    if (this.delBtn) this.delBtn.disabled = this.tool !== 'edit' || this.selected < 0;
     const ctx = c.getContext('2d')!;
     const dpr = c.width / (parseFloat(c.style.width) || c.width);
     const W = c.width / dpr, H = c.height / dpr;
