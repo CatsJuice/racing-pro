@@ -2,7 +2,7 @@
 
 卡通风格的 3D 赛车模拟器（Three.js + TypeScript + Vite）。画一条赛道、调一台赛车、刷一个圈速。
 
-在线地址：https://racing-pro.z1298554944.workers.dev
+在线地址：https://racing.oooo.so （经 Vercel 上的通用域名代理转发到 https://racing-pro.z1298554944.workers.dev）
 
 ```bash
 pnpm install
