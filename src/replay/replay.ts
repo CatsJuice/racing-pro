@@ -543,7 +543,15 @@ export class ReplayScreen implements Screen {
     this.leaves.update(dt, this.controls.target.x, this.controls.target.z);
     this.env.follow(this.controls.target.x, this.controls.target.z);
     const camDist = this.camera.position.distanceTo(this.controls.target);
-    for (const l of [this.line, this.cmpLine]) if (l) l.width.value = l.baseWidth * Math.max(1, camDist / 45);
+    // roughly constant on screen (~5 px for the main line), but never wider than a slice of the road
+    const pxWorld = (2 * camDist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / window.innerHeight;
+    const roadW = this.track.geo.width;
+    for (const l of [this.line, this.cmpLine]) {
+      if (!l) continue;
+      const main = l === this.line;
+      const half = Math.max(l.baseWidth, pxWorld * (main ? 2.6 : 1.3));
+      l.width.value = Math.min(half, roadW * (main ? 0.14 : 0.07));
+    }
     const ms = Math.max(1, camDist / 60);
     for (const m of this.markers.children) m.scale.setScalar(ms);
     this.track.setSkyVisible(this.camera.position.y < 90);
