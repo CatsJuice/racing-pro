@@ -6,6 +6,7 @@ import { drawTrack, fitView, makeView, type View2D } from '../track/draw2d';
 import { simplifyStroke, splinePolyline, TrackGeometry, validateTrack, type TrackData, type Vec2 } from '../track/track';
 import { confirmDialog, h, toast } from './dom';
 import { isTouch } from './device';
+import { icon, plain } from './icons';
 
 type Tool = 'draw' | 'edit';
 
@@ -56,28 +57,28 @@ export class TrackEditorScreen implements Screen {
     const spacingVal = h('span', { class: 'mono' }, `${this.spacing} m`);
     const spacing = h('input', { type: 'range', min: '14', max: '70', step: '1', value: String(this.spacing) });
     spacing.addEventListener('input', () => { this.spacing = parseFloat(spacing.value); spacingVal.textContent = `${this.spacing} m`; });
-    this.toolBtns.draw = h('button', { class: 'seg-btn', onclick: () => this.setTool('draw') }, t('editor.draw'));
-    this.toolBtns.edit = h('button', { class: 'seg-btn', onclick: () => this.setTool('edit') }, t('editor.editNodes'));
-    this.startBtn = h('button', { class: 'btn small', disabled: true, onclick: () => this.setStart() }, t('editor.setStart'));
+    this.toolBtns.draw = h('button', { class: 'seg-btn', onclick: () => this.setTool('draw') }, icon('pencil', 14), plain(t('editor.draw')));
+    this.toolBtns.edit = h('button', { class: 'seg-btn', onclick: () => this.setTool('edit') }, icon('node', 14), plain(t('editor.editNodes')));
+    this.startBtn = h('button', { class: 'btn small', disabled: true, onclick: () => this.setStart() }, icon('flag', 13), plain(t('editor.setStart')));
     // double-click / right-click deletion has no touch equivalent
-    this.delBtn = h('button', { class: 'btn small', disabled: true, onclick: () => { if (this.selected >= 0) this.deletePoint(this.selected); } }, t('editor.deletePoint'));
+    this.delBtn = h('button', { class: 'btn small', disabled: true, onclick: () => { if (this.selected >= 0) this.deletePoint(this.selected); } }, icon('trash', 13), plain(t('editor.deletePoint')));
 
     root.append(
       this.wrap,
       h('div', { class: 'editor-side panel' },
-        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.back() }, t('common.back')), h('h2', null, this.isNew ? t('editor.newTitle') : t('editor.editTitle'))),
+        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.back() }, icon('back', 16), plain(t('common.back'))), h('h2', null, this.isNew ? t('editor.newTitle') : t('editor.editTitle'))),
         h('div', { class: 'field' }, h('label', null, t('editor.name')), nameInput),
         h('div', { class: 'field' }, h('label', null, t('editor.tool')), h('div', { class: 'seg' }, this.toolBtns.draw, this.toolBtns.edit)),
         h('div', { class: 'field' }, h('div', { class: 'row between' }, h('label', null, t('editor.width')), widthVal), width),
         h('div', { class: 'field' }, h('div', { class: 'row between' }, h('label', null, t('editor.spacing')), spacingVal), spacing),
         h('div', { class: 'row wrap' },
-          h('button', { class: 'btn small', onclick: () => this.undo() }, t('editor.undo')),
-          h('button', { class: 'btn small', onclick: () => this.reverse() }, t('editor.reverse')),
+          h('button', { class: 'btn small', onclick: () => this.undo() }, icon('undo', 13), plain(t('editor.undo'))),
+          h('button', { class: 'btn small', onclick: () => this.reverse() }, icon('swap', 13), plain(t('editor.reverse'))),
           this.startBtn,
           this.delBtn,
-          h('button', { class: 'btn small', onclick: () => this.fit() }, t('editor.fit')),
-          h('button', { class: 'btn small', onclick: () => this.random() }, t('editor.random')),
-          h('button', { class: 'btn small danger', onclick: () => this.clearAll() }, t('common.clear')),
+          h('button', { class: 'btn small', onclick: () => this.fit() }, icon('fit', 13), plain(t('editor.fit'))),
+          h('button', { class: 'btn small', onclick: () => this.random() }, icon('shuffle', 13), plain(t('editor.random'))),
+          h('button', { class: 'btn small ghost', onclick: () => this.clearAll() }, icon('trash', 13), t('common.clear')),
         ),
         this.infoEl,
         h('div', { class: 'help dim' },
@@ -86,8 +87,8 @@ export class TrackEditorScreen implements Screen {
           h('p', null, h('b', null, t('editor.helpViewT')), t(isTouch ? 'editor.helpViewTouch' : 'editor.helpView')),
         ),
         h('div', { class: 'row editor-actions' },
-          h('button', { class: 'btn primary', onclick: () => this.save() }, t('editor.save')),
-          h('button', { class: 'btn go', onclick: () => this.save(true) }, t('editor.saveDrive')),
+          h('button', { class: 'btn primary', onclick: () => this.save() }, icon('save', 15), plain(t('editor.save'))),
+          h('button', { class: 'btn go', onclick: () => this.save(true) }, icon('play', 13), plain(t('editor.saveDrive'))),
         ),
       ),
     );
@@ -440,7 +441,10 @@ export class TrackEditorScreen implements Screen {
     const dpr = c.width / (parseFloat(c.style.width) || c.width);
     const W = c.width / dpr, H = c.height / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#8fd765';
+    const bg = ctx.createRadialGradient(W * 0.45, H * 0.4, 0, W * 0.45, H * 0.4, Math.max(W, H) * 0.8);
+    bg.addColorStop(0, '#1d2a5e');
+    bg.addColorStop(1, '#0f1636');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
     // grid
     const v = this.view;
@@ -450,20 +454,20 @@ export class TrackEditorScreen implements Screen {
     ctx.lineWidth = 1;
     for (let gx = Math.floor(tl.x / step) * step; gx <= br.x; gx += step) {
       const [x] = v.toScreen(gx, 0);
-      ctx.strokeStyle = gx % (step * 5) === 0 ? 'rgba(40,90,30,0.35)' : 'rgba(40,90,30,0.15)';
+      ctx.strokeStyle = gx % (step * 5) === 0 ? 'rgba(140,170,255,0.16)' : 'rgba(140,170,255,0.07)';
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
     for (let gz = Math.floor(tl.z / step) * step; gz <= br.z; gz += step) {
       const [, y] = v.toScreen(0, gz);
-      ctx.strokeStyle = gz % (step * 5) === 0 ? 'rgba(40,90,30,0.35)' : 'rgba(40,90,30,0.15)';
+      ctx.strokeStyle = gz % (step * 5) === 0 ? 'rgba(140,170,255,0.16)' : 'rgba(140,170,255,0.07)';
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
 
     const pts = this.data.points;
     if (pts.length >= 3) {
       // gravel/kerb hint as a wider soft band
-      drawTrack(ctx, { ...this.data, width: this.data.width + 6 }, v, { roadColor: 'rgba(255,255,255,0.18)', outline: false, startLine: false });
-      drawTrack(ctx, this.data, v, { arrows: true, minWidthPx: 4 });
+      drawTrack(ctx, { ...this.data, width: this.data.width + 6 }, v, { roadColor: 'rgba(98,214,255,0.10)', outline: false, startLine: false });
+      drawTrack(ctx, this.data, v, { arrows: true, minWidthPx: 4, roadColor: '#343d68', edgeColor: 'rgba(235,240,255,0.75)' });
     }
     // control points
     if (this.tool === 'edit' || pts.length < 3) {
@@ -472,10 +476,10 @@ export class TrackEditorScreen implements Screen {
         const r = i === this.hoverIdx || i === this.dragIdx ? 9 : 7;
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = i === 0 ? '#43c46b' : i === this.selected ? '#ffd23f' : '#ffffff';
+        ctx.fillStyle = i === 0 ? '#2fd27a' : i === this.selected ? '#ffd23f' : '#ffffff';
         ctx.fill();
         ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#1b1d2a';
+        ctx.strokeStyle = '#0a0f22';
         ctx.stroke();
         if (i === 0) {
           ctx.fillStyle = '#1b1d2a';
@@ -490,7 +494,7 @@ export class TrackEditorScreen implements Screen {
     if (this.stroke && this.stroke.length > 1) {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = 'rgba(27,29,42,0.5)';
+      ctx.strokeStyle = 'rgba(255,210,63,0.45)';
       ctx.lineWidth = Math.max(4, this.data.width * v.scale);
       ctx.beginPath();
       this.stroke.forEach((p, i) => {
@@ -505,17 +509,18 @@ export class TrackEditorScreen implements Screen {
       ctx.fill();
     }
     if (!pts.length && !this.stroke) {
-      ctx.fillStyle = 'rgba(27,29,42,0.7)';
-      ctx.font = 'bold 22px "Baloo 2", sans-serif';
+      ctx.fillStyle = 'rgba(235,240,255,0.8)';
+      ctx.font = '800 22px "Baloo 2", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(t('editor.emptyHint'), W / 2, H / 2);
-      ctx.font = '15px "Baloo 2", sans-serif';
+      ctx.fillStyle = 'rgba(235,240,255,0.5)';
+      ctx.font = '600 15px Nunito, sans-serif';
       ctx.fillText(t('editor.emptyHint2'), W / 2, H / 2 + 28);
     }
     // scale bar
     const barM = steps.find((s) => s * v.scale >= 80) ?? 1000;
-    ctx.fillStyle = '#1b1d2a';
-    ctx.fillRect(20, H - 30, barM * v.scale, 5);
+    ctx.fillStyle = 'rgba(235,240,255,0.75)';
+    ctx.fillRect(20, H - 30, barM * v.scale, 4);
     ctx.font = '12px "JetBrains Mono", monospace';
     ctx.textAlign = 'left';
     ctx.fillText(`${barM} m`, 20, H - 38);

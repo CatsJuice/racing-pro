@@ -7,6 +7,12 @@ import { toMenu, toRace } from '../nav';
 import { h, confirmDialog, toast } from './dom';
 import { Showroom } from './showroom';
 import { isCompact, isPortrait } from './device';
+import { icon, plain, type IconName } from './icons';
+
+const GROUP_ICONS: Record<string, IconName> = {
+  look: 'palette', engine: 'engine', gearbox: 'gearbox', drive: 'drive', chassis: 'chassis', susp: 'spring',
+  align: 'fit', tire: 'tire', brake: 'brake', aero: 'wind', steer: 'wheel', assist: 'shield',
+};
 
 export class GarageScreen implements Screen {
   private room!: Showroom;
@@ -35,9 +41,9 @@ export class GarageScreen implements Screen {
     this.dirtyEl = h('span', { class: 'dirty' });
     root.append(
       h('div', { class: 'garage-left panel' },
-        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.leave(() => toMenu()) }, t('common.mainMenu')), h('h2', null, t('garage.title'))),
+        h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => this.leave(() => toMenu()) }, icon('back', 16), plain(t('common.mainMenu'))), h('h2', null, t('garage.title'))),
         this.listEl,
-        h('button', { class: 'btn primary block', onclick: () => this.newCar() }, t('garage.new')),
+        h('button', { class: 'btn block', onclick: () => this.newCar() }, icon('plus', 16), plain(t('garage.new'))),
       ),
       h('div', { class: 'garage-right panel' }, this.panelEl),
       h('div', { class: 'garage-bottom panel' },
@@ -92,7 +98,7 @@ export class GarageScreen implements Screen {
     const el = this.panelEl;
     el.innerHTML = '';
     const tabs = h('div', { class: 'tabs' },
-      PARAM_GROUPS.map((g) => h('button', { class: `tab ${g.id === this.tab ? 'on' : ''}`, title: tx(`g.${g.id}`, g.label), onclick: () => { this.tab = g.id; this.renderPanel(); } }, h('span', null, g.icon), h('small', null, tx(`g.${g.id}`, g.label)))),
+      PARAM_GROUPS.map((g) => h('button', { class: `tab ${g.id === this.tab ? 'on' : ''}`, title: tx(`g.${g.id}`, g.label), onclick: () => { this.tab = g.id; this.renderPanel(); } }, icon(GROUP_ICONS[g.id] ?? 'sliders', 17), h('small', null, tx(`g.${g.id}`, g.label)))),
     );
     const group = PARAM_GROUPS.find((g) => g.id === this.tab)!;
     const fields = h('div', { class: 'fields' }, group.params.map((m) => this.field(m)));
@@ -103,23 +109,20 @@ export class GarageScreen implements Screen {
         h('div', null, h('h2', null, carName(c), this.dirtyEl), h('div', { class: 'dim small' }, c.builtin ? t('garage.presetNote') : t('garage.custom'))),
       ),
       tabs,
-      h('h3', { class: 'group-title' }, `${group.icon} ${tx(`g.${group.id}`, group.label)}`),
       fields,
       h('div', { class: 'tune-actions' },
         h('div', { class: 'row' },
-          h('button', { class: 'btn primary', onclick: () => this.save(false) }, t('common.save')),
-          h('button', { class: 'btn', onclick: () => this.save(true) }, t('common.saveAs')),
-          h('button', { class: 'btn ghost', onclick: () => this.revert() }, t('garage.revert')),
-        ),
-        h('div', { class: 'row' },
-          h('button', { class: 'btn ghost', onclick: () => this.resetDefaults() }, t('garage.resetPreset')),
-          !c.builtin ? h('button', { class: 'btn danger', onclick: () => this.remove() }, t('common.delete')) : null,
+          h('button', { class: 'btn primary', onclick: () => this.save(false) }, icon('save', 15), t('common.save')),
+          h('button', { class: 'btn', onclick: () => this.save(true) }, icon('copy', 15), t('common.saveAs')),
+          h('button', { class: 'btn ghost icon', title: t('garage.revert'), onclick: () => this.revert() }, icon('undo', 16)),
+          h('button', { class: 'btn ghost icon', title: t('garage.resetPreset'), onclick: () => this.resetDefaults() }, icon('reset', 16)),
+          !c.builtin ? h('button', { class: 'btn ghost icon', title: t('common.delete'), onclick: () => this.remove() }, icon('trash', 16)) : null,
         ),
         h('div', { class: 'row test-drive' }, trackSel, h('button', { class: 'btn go', onclick: () => {
           const tr = tracks.find((x) => x.id === (trackSel as HTMLSelectElement).value) ?? tracks[0];
           setPrefs({ lastTrack: tr.id });
           toRace(tr, this.current);
-        } }, t('garage.testDrive'))),
+        } }, icon('play', 13), plain(t('garage.testDrive')))),
       ),
     );
     this.updateDirty();
@@ -301,7 +304,7 @@ export class GarageScreen implements Screen {
     // on phones the tuning panel covers the right half (landscape) or bottom half (portrait)
     const compact = isCompact(), portrait = isPortrait();
     this.room.offsetX = compact && !portrait ? -0.25 : 0;
-    this.room.offsetY = compact ? (portrait ? 0.2 : 0.06) : 0;
+    this.room.offsetY = compact ? (portrait ? 0.2 : -0.12) : 0;
     this.room.render(dt);
   }
 

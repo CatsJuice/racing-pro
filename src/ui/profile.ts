@@ -1,6 +1,7 @@
 import { t } from '../i18n';
 import { identity, onIdentity, randomName, register, rename } from '../core/online';
 import { h, toast } from './dom';
+import { icon, plain } from './icons';
 
 /** Modal asking for a player name. Resolves with the saved name, or null if cancelled. */
 export function nameDialog(opts: { first?: boolean } = {}): Promise<string | null> {
@@ -27,7 +28,7 @@ export function nameDialog(opts: { first?: boolean } = {}): Promise<string | nul
     btn.addEventListener('click', submit);
     const wrap = h('div', { class: 'modal-wrap' },
       h('div', { class: 'modal panel name-dialog' },
-        h('h2', null, opts.first ? t('profile.welcome') : t('profile.rename')),
+        h('h2', null, icon(opts.first ? 'flag' : 'pencil', 24), plain(opts.first ? t('profile.welcome') : t('profile.rename'))),
         h('p', { class: 'dim' }, opts.first ? t('profile.welcomeText') : t('profile.renameText')),
         input,
         err,
@@ -45,7 +46,7 @@ export function nameDialog(opts: { first?: boolean } = {}): Promise<string | nul
 /** Small "👤 name ✏️" chip that stays in sync with the identity. */
 export function playerBadge(): HTMLElement {
   const label = h('b', null, identity()?.name ?? t('profile.unset'));
-  const el = h('button', { class: 'player-badge', title: t('profile.editTitle'), onclick: () => nameDialog() }, h('span', { class: 'avatar' }, '👤'), label, h('span', { class: 'edit' }, '✏️'));
+  const el = h('button', { class: 'player-badge', title: t('profile.editTitle'), onclick: () => nameDialog() }, h('span', { class: 'avatar' }, icon('user', 16)), label, h('span', { class: 'edit' }, icon('pencil', 14)));
   const off = onIdentity((i) => {
     if (!el.isConnected) return off();
     label.textContent = i.name;

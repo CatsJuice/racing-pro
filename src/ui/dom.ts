@@ -27,6 +27,22 @@ function append(el: HTMLElement, children: Child[]) {
   }
 }
 
+/** Range inputs paint their filled part from a `--p` custom property (see style.css). */
+function syncRange(el: HTMLInputElement) {
+  const min = parseFloat(el.min || '0'), max = parseFloat(el.max || '100');
+  const p = max > min ? ((parseFloat(el.value) - min) / (max - min)) * 100 : 0;
+  el.style.setProperty('--p', `${Math.max(0, Math.min(100, p))}%`);
+}
+
+export function initRangeFill() {
+  const isRange = (n: unknown): n is HTMLInputElement => n instanceof HTMLInputElement && n.type === 'range';
+  document.addEventListener('input', (e) => { if (isRange(e.target)) syncRange(e.target); }, true);
+  // programmatic value changes (and freshly mounted sliders) don't fire input events
+  const scan = () => document.querySelectorAll<HTMLInputElement>('input[type=range]').forEach(syncRange);
+  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+  setInterval(scan, 500);
+}
+
 export function clear(el: HTMLElement) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }

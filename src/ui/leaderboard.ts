@@ -10,6 +10,7 @@ import { isOfficial } from '../track/official';
 import type { TrackData } from '../track/track';
 import { confirmDialog, h, toast } from './dom';
 import { playerBadge } from './profile';
+import { icon, plain } from './icons';
 
 /** Row data common to global and local laps. */
 interface Row {
@@ -44,7 +45,7 @@ export class LeaderboardScreen implements Screen {
     this.body = h('div', { class: 'board-body' });
     root.append(
       h('div', { class: 'screen-head' },
-        h('button', { class: 'btn ghost', onclick: () => toMenu() }, t('common.mainMenu')),
+        h('button', { class: 'btn ghost', onclick: () => toMenu() }, icon('back', 16), plain(t('common.mainMenu'))),
         h('h1', null, t('board.title')),
         h('div', { class: 'dim grow' }, t('board.subtitle')),
         playerBadge(),
@@ -64,8 +65,8 @@ export class LeaderboardScreen implements Screen {
       );
     const official = this.tracks.filter((tr) => isOfficial(tr.id));
     const local = this.tracks.filter((tr) => !isOfficial(tr.id));
-    this.side.append(h('div', { class: 'side-title' }, t('board.official')), ...official.map(item));
-    this.side.append(h('div', { class: 'side-title' }, t('board.local')), ...(local.length ? local.map(item) : [h('div', { class: 'dim small' }, t('board.noLocalTracks'))]));
+    this.side.append(h('div', { class: 'side-title' }, icon('globe', 13), plain(t('board.official'))), ...official.map(item));
+    this.side.append(h('div', { class: 'side-title' }, icon('save', 13), plain(t('board.local'))), ...(local.length ? local.map(item) : [h('div', { class: 'dim small' }, t('board.noLocalTracks'))]));
   }
 
   private async renderBody() {
@@ -76,12 +77,12 @@ export class LeaderboardScreen implements Screen {
     this.body.innerHTML = '';
     const tabs = official
       ? h('div', { class: 'seg' },
-        h('button', { class: `seg-btn ${global ? 'on' : ''}`, onclick: () => { this.view = 'global'; this.renderBody(); } }, t('board.global')),
-        h('button', { class: `seg-btn ${!global ? 'on' : ''}`, onclick: () => { this.view = 'local'; this.renderBody(); } }, t('board.myHistory')))
+        h('button', { class: `seg-btn ${global ? 'on' : ''}`, onclick: () => { this.view = 'global'; this.renderBody(); } }, icon('globe', 14), plain(t('board.global'))),
+        h('button', { class: `seg-btn ${!global ? 'on' : ''}`, onclick: () => { this.view = 'local'; this.renderBody(); } }, icon('clock', 14), plain(t('board.myHistory'))))
       : h('span', { class: 'tag' }, t('board.localTag'));
     const head = h('div', { class: 'row between wrap' },
-      h('div', { class: 'row' }, h('h2', null, `🏆 ${trackName(tr)}`), tabs),
-      h('button', { class: 'btn go small', onclick: () => this.drive() }, t('board.drive')),
+      h('div', { class: 'row', style: { gap: '14px' } }, h('h2', null, icon('trophy', 22), trackName(tr)), tabs),
+      h('button', { class: 'btn go', onclick: () => this.drive() }, icon('play', 13), plain(t('board.drive'))),
     );
     const status = h('div', { class: 'board-status' }, t('common.loading'));
     this.body.append(head, status);
@@ -145,7 +146,7 @@ export class LeaderboardScreen implements Screen {
     const p = peakPower(r.car);
     const replay = (compare?: string) => toReplay(r.id, compare, global);
     return h('tr', { class: `${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''} ${r.mine ? 'mine' : ''}`, onclick: () => replay() },
-      h('td', { class: 'rank' }, i < 3 ? ['🥇', '🥈', '🥉'][i] : String(i + 1)),
+      h('td', { class: 'rank' }, i < 3 ? h('span', { class: `rank-medal m${i + 1}` }, String(i + 1)) : String(i + 1)),
       global ? h('td', { class: 'player' }, h('b', null, r.player), r.mine ? h('span', { class: 'tag' }, t('common.me')) : null) : null,
       h('td', { class: 'mono big' }, fmtTime(r.time)),
       h('td', { class: 'mono dim' }, i === 0 ? '—' : `+${(r.time - best).toFixed(3)}`),
@@ -158,19 +159,19 @@ export class LeaderboardScreen implements Screen {
       h('td', { class: 'mono' }, `${Math.round(r.topSpeed)}`),
       h('td', { class: 'dim small' }, fmtDate(r.date)),
       h('td', { class: 'actions', onclick: (e: Event) => e.stopPropagation() },
-        h('button', { class: 'btn small', title: t('board.replay'), onclick: () => replay() }, t('board.replay')),
-        i > 0 ? h('button', { class: 'btn small ghost', title: t('board.cmpLeaderT'), onclick: () => replay((global ? 'o:' : 'l:') + leader.id) }, t('board.cmpLeader')) : null,
-        global && mine && !r.mine && mine !== leader ? h('button', { class: 'btn small ghost', title: t('board.cmpMeT'), onclick: () => replay('o:' + mine.id) }, t('board.cmpMe')) : null,
-        global ? h('button', { class: 'btn small ghost', title: t('board.challengeT'), onclick: () => this.drive(r.id) }, t('board.challenge')) : null,
-        h('button', { class: 'btn small ghost', title: t('board.copyTuneT'), onclick: () => {
+        h('button', { class: 'btn small', title: plain(t('board.replay')), onclick: () => replay() }, icon('play', 12), plain(t('board.replay'))),
+        i > 0 ? h('button', { class: 'btn small ghost icon', title: t('board.cmpLeaderT'), onclick: () => replay((global ? 'o:' : 'l:') + leader.id) }, icon('compare', 15)) : null,
+        global && mine && !r.mine && mine !== leader ? h('button', { class: 'btn small ghost icon', title: t('board.cmpMeT'), onclick: () => replay('o:' + mine.id) }, icon('user', 15)) : null,
+        global ? h('button', { class: 'btn small ghost icon', title: t('board.challengeT'), onclick: () => this.drive(r.id) }, icon('ghost', 15)) : null,
+        h('button', { class: 'btn small ghost icon', title: t('board.copyTuneT'), onclick: () => {
           saveCar({ ...r.car, id: uid('car-'), name: `${r.carName}${r.player ? ` · ${r.player}` : ''}`.slice(0, 24), builtin: false });
           toast(t('board.tuneCopied'), 'good');
-        } }, t('board.copyTune')),
-        !global ? h('button', { class: 'btn small danger', title: t('common.delete'), onclick: async () => {
+        } }, icon('sliders', 15)),
+        !global ? h('button', { class: 'btn small ghost icon', title: t('common.delete'), onclick: async () => {
           if (!(await confirmDialog(t('board.deleteConfirm'), t('common.delete')))) return;
           await deleteLap(r.id);
           this.renderBody();
-        } }, '✕') : null,
+        } }, icon('trash', 15)) : null,
       ),
     );
   }

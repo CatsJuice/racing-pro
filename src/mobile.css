@@ -75,9 +75,10 @@ html.touch .hud-tl { top: calc(8px + var(--sat)); left: calc(8px + var(--sal)); 
 html.touch .hud-tr { top: calc(8px + var(--sat)); right: calc(8px + var(--sar)); }
 html.touch .minimap { width: 118px; height: 118px; border-radius: 14px; }
 html.touch .hud-br {
-  right: auto; left: 50%; bottom: calc(6px + var(--sab)); min-width: 220px;
-  transform: translateX(-50%) scale(0.66); transform-origin: bottom center;
+  right: auto; left: 50%; bottom: calc(2px + var(--sab));
+  transform: translateX(-50%) scale(0.5); transform-origin: bottom center;
 }
+html.touch .hud-br .assists { display: none; }
 html.touch .hud-msg { font-size: 20px; top: 24%; white-space: normal; max-width: 70vw; text-align: center; padding: 4px 18px; }
 html.touch .rewind-badge { font-size: 24px; top: 24%; }
 html.touch.portrait .tc-top { top: auto; bottom: calc(170px + var(--sab)); }
@@ -204,6 +205,7 @@ html.touch.portrait .tc-pedal { width: 62px; }
     width: auto; transform: none; justify-content: space-between;
   }
   .menu-left .logo { align-self: center; }
+  .menu-left .menu-items { margin-top: auto; }
   .menu-left .tagline { align-self: center; display: none; }
   .menu-foot { text-align: center; font-size: 13px; }
 
@@ -217,6 +219,34 @@ html.touch.portrait .tc-pedal { width: 62px; }
 }
 
 /* short landscape phones */
+@media (max-height: 460px) and (orientation: landscape) {
+  .menu-left { gap: 8px; top: calc(50% + 6px); }
+  .logo .l1 { font-size: 34px; }
+  .logo .l2 { font-size: 42px; margin-left: 24px; }
+  .logo::after { display: none; }
+  .tagline, .menu-foot, .mi-text small { display: none; }
+  .menu-item { padding: 6px 12px 6px 8px; }
+  .mi-icon { width: 34px; height: 34px; border-radius: 10px; }
+  .mi-icon .ico { width: 18px; height: 18px; }
+  .mi-text b { font-size: 17px; }
+
+  /* garage: car strip on the left half, full-height tuning panel on the right */
+  .garage-left { right: calc(50vw + 4px); }
+  .garage-left .car-card { width: 150px; }
+  .garage-left .car-card .tag { display: none; }
+  .garage-right { top: calc(8px + var(--sat)); }
+  .garage-bottom { display: none; }
+  .tune-panel { gap: 8px; }
+  .tune-panel > .row.between:first-child { display: none; }
+  .tabs { display: flex; overflow-x: auto; overflow-y: hidden; }
+  .tab { flex: none; width: 60px; }
+  .field { padding: 7px 10px; }
+  .field .desc { display: none; }
+  .tune-actions { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 8px; gap: 6px; }
+  .tune-actions .btn { height: 32px; }
+  .test-drive { flex: 1; min-width: 200px; }
+  .test-drive .select { height: 32px; font-size: 12.5px; }
+}
 @media (max-height: 420px) and (orientation: landscape) {
   .garage-right { top: 108px; }
   .tele-chart { display: none; }

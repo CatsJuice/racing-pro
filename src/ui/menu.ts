@@ -1,6 +1,7 @@
 import { carName, t } from '../i18n';
 import { langPicker } from './langPicker';
 import { isCompact, isPortrait } from './device';
+import { icon, type IconName } from './icons';
 import type { Screen } from '../app';
 import { getCar, getPrefs, listCars } from '../core/storage';
 import { toGarage, toLeaderboard, toRaceSetup, toTracks } from '../nav';
@@ -20,22 +21,23 @@ export class MenuScreen implements Screen {
     const car = getCar(getPrefs().lastCar ?? '') ?? listCars()[0];
     this.room.setCar(car);
     root.className = 'menu';
-    const item = (icon: string, label: string, sub: string, fn: () => void, primary = false) =>
+    const item = (ico: IconName, tint: string, label: string, sub: string, fn: () => void, primary = false) =>
       h('button', { class: `menu-item ${primary ? 'primary' : ''}`, onclick: fn },
-        h('span', { class: 'mi-icon' }, icon),
+        h('span', { class: `mi-icon ${tint}` }, icon(ico, 24)),
         h('span', { class: 'mi-text' }, h('b', null, label), h('small', null, sub)),
+        h('span', { class: 'chev' }, icon('chevron', 20)),
       );
     root.append(
       h('div', { class: 'menu-left' },
         h('div', { class: 'logo' }, h('span', { class: 'l1' }, 'RACING'), h('span', { class: 'l2' }, 'PRO')),
         h('div', { class: 'tagline' }, t('menu.tagline')),
         h('div', { class: 'menu-items' },
-          item('🏁', t('menu.start'), t('menu.startSub'), () => toRaceSetup(), true),
-          item('🛣️', t('menu.tracks'), t('menu.tracksSub'), () => toTracks()),
-          item('🔧', t('menu.garage'), t('menu.garageSub'), () => toGarage()),
-          item('🏆', t('menu.board'), t('menu.boardSub'), () => toLeaderboard()),
+          item('flag', '', t('menu.start'), t('menu.startSub'), () => toRaceSetup(), true),
+          item('road', 'c-green', t('menu.tracks'), t('menu.tracksSub'), () => toTracks()),
+          item('wrench', 'c-blue', t('menu.garage'), t('menu.garageSub'), () => toGarage()),
+          item('trophy', 'c-purple', t('menu.board'), t('menu.boardSub'), () => toLeaderboard()),
         ),
-        h('div', { class: 'menu-foot dim' }, t('menu.currentCar', { car: carName(car) })),
+        h('div', { class: 'menu-foot' }, icon('car', 18), t('menu.currentCar', { car: carName(car) })),
       ),
       h('div', { class: 'menu-top-right row' }, langPicker(), playerBadge()),
     );
@@ -50,7 +52,7 @@ export class MenuScreen implements Screen {
     // portrait phones: menu stacks below the car, so lift the car instead of shifting it right
     const portrait = isPortrait() && isCompact();
     this.room.offsetX = portrait ? 0 : 0.16;
-    this.room.offsetY = portrait ? 0.08 : 0;
+    this.room.offsetY = portrait ? 0.16 : 0;
     this.room.render(dt);
   }
 

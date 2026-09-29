@@ -15,6 +15,7 @@ import { timeControls } from '../ui/timeControls';
 import { TrackScene } from '../track/trackScene';
 import { h } from '../ui/dom';
 import { isTouch } from '../ui/device';
+import { icon, iconSvg, plain } from '../ui/icons';
 import { cssColor, frameCount, get, sampleAt, speedColor, timeAtDistance } from './frames';
 
 type ColorMode = 'speed' | 'pedal';
@@ -270,7 +271,7 @@ export class ReplayScreen implements Screen {
     this.chart.addEventListener('pointermove', (e) => { if (e.buttons) this.onChartPointer(e); });
     this.scrub = h('input', { type: 'range', min: '0', max: String(lap.time), step: '0.01', value: '0', class: 'scrub' });
     this.scrub.addEventListener('input', () => { this.t = parseFloat(this.scrub.value); });
-    const playBtn = h('button', { class: 'btn icon', onclick: () => { this.playing = !this.playing; this.syncButtons(); } }, '⏸');
+    const playBtn = h('button', { class: 'btn primary icon', onclick: () => { this.playing = !this.playing; this.syncButtons(); } }, icon('pause', 16));
     this.ui.play = playBtn;
     const rates = [0.25, 0.5, 1, 2, 4];
     const rateBtns = rates.map((r) => h('button', { class: 'chip' + (r === 1 ? ' on' : ''), onclick: () => { this.rate = r; this.syncButtons(); } }, `${r}x`));
@@ -318,12 +319,12 @@ export class ReplayScreen implements Screen {
     const trackTitle = trackName(getTrack(lap.trackId) ?? { id: lap.trackId, name: lap.trackName, builtin: false });
     root.append(
       h('div', { class: 'replay-top panel' },
-        h('button', { class: 'btn ghost', onclick: () => toLeaderboard(lap.trackId) }, t('replay.back')),
+        h('button', { class: 'btn ghost', onclick: () => toLeaderboard(lap.trackId) }, icon('back', 16), plain(t('replay.back'))),
         h('div', { class: 'replay-title' },
-          h('div', { class: 'title' }, `${trackTitle} · ${fmtTime(lap.time)}${lap.playerName ? ` · 👤 ${lap.playerName}` : ''}`),
+          h('div', { class: 'title' }, `${trackTitle} · ${fmtTime(lap.time)}${lap.playerName ? ` · ${lap.playerName}` : ''}`),
           h('div', { class: 'dim' }, t('replay.meta', { car: tx(`car.${lap.carId}`, lap.carName), dt: lap.car.drivetrain, assist: t(`assist.${lap.assist ?? 'pro'}`), rw: lap.rewinds ? ` · ⏪${lap.rewinds}` : '', date: fmtDate(lap.date, true), top: Math.round(lap.topSpeed), sectors: lap.sectors.map((s) => s.toFixed(2)).join(' / ') })),
         ),
-        h('div', { class: 'row' }, h('span', { class: 'dim' }, t('replay.compare')), cmpSelect),
+        h('div', { class: 'row' }, h('span', { class: 'dim', style: { display: 'flex' } }, icon('compare', 16)), cmpSelect),
       ),
       h('div', { class: 'replay-side panel' },
         h('div', { class: 'row between' }, h('label', null, t('replay.time')), this.ui.time),
@@ -332,7 +333,7 @@ export class ReplayScreen implements Screen {
         this.ui.rpm,
         h('div', { class: 'pedals' }, h('div', { class: 'pedal' }, this.ui.brk), h('div', { class: 'pedal' }, this.ui.thr)),
         legend,
-        h('details', { class: 'time-details' }, h('summary', null, t('time.settings')), timeControls(this.env)),
+        h('details', { class: 'time-details' }, h('summary', null, icon('sun', 14), plain(t('time.settings'))), timeControls(this.env)),
         h('div', { class: 'hint dim' }, isTouch ? t('replay.helpTouch') : [t('replay.help'), h('br'), t('replay.help2')]),
       ),
       h('div', { class: 'replay-bottom panel' },
@@ -372,7 +373,7 @@ export class ReplayScreen implements Screen {
   }
 
   private syncButtons() {
-    this.ui.play.textContent = this.playing ? '⏸' : '▶';
+    this.ui.play.innerHTML = iconSvg(this.playing ? 'pause' : 'play', 16);
     Array.from(this.ui.rates.children).forEach((b, i) => b.classList.toggle('on', [0.25, 0.5, 1, 2, 4][i] === this.rate));
     this.ui.follow.classList.toggle('on', this.follow);
     this.ui.full.classList.toggle('on', this.fullLine);

@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { fmtDelta, fmtTime } from '../core/storage';
-import { drawTrack, fitView, type View2D } from '../track/draw2d';
+import { drawCircuit, fitView, type View2D } from '../track/draw2d';
 import { splinePolyline, type TrackData } from '../track/track';
 import { h } from '../ui/dom';
 import type { VehiclePhysics } from '../car/physics';
@@ -26,11 +26,11 @@ export class Hud {
   private bestEl = h('span', { class: 'mono' }, '--');
   private validEl = h('div', { class: 'hud-badge' });
   private sectorEls = [0, 1, 2].map((i) => h('div', { class: 'sector' }, `S${i + 1}`));
-  private speedEl = h('div', { class: 'hud-speed mono' }, '0');
+  private speedEl = h('div', { class: 'hud-speed' }, '0');
   private gearEl = h('div', { class: 'hud-gear' }, 'N');
-  private rpmFill = h('div', { class: 'rpm-fill' });
-  private rpmText = h('div', { class: 'rpm-text mono' });
-  private shiftLight = h('div', { class: 'shift-light' });
+  private tach = h('div', { class: 'tach' });
+  private tachFill!: SVGPathElement;
+  private redline = 0;
   private absEl = h('div', { class: 'assist' }, 'ABS');
   private tcsEl = h('div', { class: 'assist' }, 'TCS');
   private assistEl = h('div', { class: 'assist level' });
@@ -56,8 +56,8 @@ export class Hud {
     this.mmBase.height = size * dpr;
     const bctx = this.mmBase.getContext('2d')!;
     bctx.scale(dpr, dpr);
-    this.mmView = fitView(splinePolyline(track.points, 8), size, size, 14);
-    drawTrack(bctx, track, this.mmView, { minWidthPx: 5, roadColor: '#f4f4f4', edgeColor: 'rgba(20,22,35,0.8)' });
+    this.mmView = fitView(splinePolyline(track.points, 8), size, size, 20);
+    drawCircuit(bctx, track, this.mmView, 3.2);
 
     this.el = h('div', { class: 'hud' },
       h('div', { class: 'hud-tl panel' },
@@ -73,12 +73,8 @@ export class Hud {
         this.onlineEl,
       ),
       h('div', { class: 'hud-tr' }, this.minimap),
-      h('div', { class: 'hud-br panel' },
-        h('div', { class: 'row' },
-          h('div', { class: 'speed-wrap' }, this.speedEl, h('div', { class: 'unit' }, 'km/h')),
-          h('div', { class: 'gear-wrap' }, this.shiftLight, this.gearEl),
-        ),
-        h('div', { class: 'rpm-bar' }, this.rpmFill, this.rpmText),
+      h('div', { class: 'hud-br' },
+        this.tach,
         h('div', { class: 'row assists' }, this.absEl, this.tcsEl, this.assistEl),
       ),
       h('div', { class: 'hud-bl panel' },
@@ -93,6 +89,54 @@ export class Hud {
       h('div', { class: 'hud-help' }, t('hud.help')),
     );
   }
+
+  /**
+   * Builds the 270° tachometer for a given rev limit: a track arc, a red zone over the last
+   * 12% and numbered ticks every 1000 rpm; `tachFill` is driven by stroke-dashoffset.
+   */
+  private buildTach(redline: number) {
+    this.redline = redline;
+    const S = 210, C = S / 2, R = 88, A0 = 135, SWEEP = 270;
+    const pt = (k: number, r = R) => {
+      const a = ((A0 + SWEEP * k) * Math.PI) / 180;
+      return [C + r * Math.cos(a), C + r * Math.sin(a)];
+    };
+    const arc = (k0: number, k1: number, r = R) => {
+      const [x0, y0] = pt(k0, r), [x1, y1] = pt(k1, r);
+      return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${SWEEP * (k1 - k0) > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+    };
+    const maxK = Math.ceil(redline / 1000);
+    const scale = (rpm: number) => rpm / (maxK * 1000);
+    let ticks = '';
+    for (let i = 0; i <= maxK * 2; i++) {
+      const rpm = i * 500, k = scale(rpm), major = i % 2 === 0;
+      const [x0, y0] = pt(k, R - 10), [x1, y1] = pt(k, R - (major ? 18 : 14));
+      ticks += `<line class="tach-tick ${major ? 'major' : ''}" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke-width="${major ? 2 : 1.2}" stroke-linecap="round"/>`;
+      if (major) {
+        const [tx, ty] = pt(k, R - 30);
+        ticks += `<text class="tach-num" x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="central">${i / 2}</text>`;
+      }
+    }
+    const red0 = scale(redline * 0.88), red1 = scale(redline);
+    this.tach.innerHTML = `<div class="tach-bg"></div>
+      <svg viewBox="0 0 ${S} ${S}" width="${S}" height="${S}">
+        <defs><linearGradient id="tachGrad" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#2fd27a"/><stop offset="0.55" stop-color="#ffd23f"/><stop offset="1" stop-color="#ff6a3d"/>
+        </linearGradient></defs>
+        <path class="tach-track" d="${arc(0, 1)}" fill="none" stroke-width="7" stroke-linecap="round"/>
+        <path class="tach-red" d="${arc(red0, red1, R + 7)}" fill="none" stroke-width="3" stroke-linecap="round"/>
+        <path class="tach-fill" d="${arc(0, 1)}" fill="none" stroke-width="7" stroke-linecap="round" pathLength="100" stroke-dasharray="100 200" stroke-dashoffset="100"/>
+        ${ticks}
+      </svg>`;
+    this.tachFill = this.tach.querySelector('.tach-fill')!;
+    this.tachScale = 1 / (maxK * 1000);
+    this.tach.append(
+      h('div', { class: 'tach-center' }, this.speedEl, h('div', { class: 'unit' }, 'km/h')),
+      h('div', { class: 'gear-wrap' }, this.gearEl),
+    );
+  }
+
+  private tachScale = 1 / 8000;
 
   setGhostInfo(text: string | null) {
     this.ghostEl.textContent = text ?? '';
@@ -116,11 +160,11 @@ export class Hud {
     this.speedEl.textContent = String(Math.round(Math.abs(p.vLong) * 3.6));
     this.gearEl.textContent = p.shiftTimer > 0 ? '·' : p.gearLabel;
     const s = p.setup;
+    if (s.redline !== this.redline) this.buildTach(s.redline);
     const k = Math.min(1, p.rpm / s.redline);
-    this.rpmFill.style.width = `${k * 100}%`;
-    this.rpmFill.classList.toggle('hot', k > 0.9);
-    this.rpmText.textContent = `${Math.round(p.rpm)} rpm`;
-    this.shiftLight.classList.toggle('on', k > 0.93 && p.gear > 0);
+    const fill = Math.min(1, p.rpm * this.tachScale) * 100;
+    this.tachFill.setAttribute('stroke-dashoffset', (100 - fill).toFixed(2));
+    this.tach.classList.toggle('shift', k > 0.93 && p.gear > 0);
     this.absEl.classList.toggle('on', p.absActive);
     this.tcsEl.classList.toggle('on', p.tcsActive);
     const order = [0, 1, 2, 3];
@@ -174,22 +218,33 @@ export class Hud {
     ctx.scale(dpr, dpr);
     if (ghost) {
       const [gx, gy] = this.mmView.toScreen(ghost.x, ghost.z);
-      ctx.fillStyle = '#7fd8ff';
+      ctx.fillStyle = '#62d6ff';
+      ctx.strokeStyle = 'rgba(6,10,26,0.9)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(gx, gy, 4, 0, Math.PI * 2);
+      ctx.arc(gx, gy, 4.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
     }
     const [x, y] = this.mmView.toScreen(car.x, car.z);
     ctx.save();
     ctx.translate(x, y);
+    // soft halo so the player never gets lost on the line
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 16);
+    halo.addColorStop(0, 'rgba(255, 90, 90, 0.55)');
+    halo.addColorStop(1, 'rgba(255, 90, 90, 0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(-16, -16, 32, 32);
     ctx.rotate(Math.atan2(Math.cos(car.heading), Math.sin(car.heading)));
-    ctx.fillStyle = '#ff3b3b';
+    ctx.fillStyle = '#ff4d63';
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(8, 0);
-    ctx.lineTo(-5, 5);
-    ctx.lineTo(-5, -5);
+    ctx.moveTo(8.5, 0);
+    ctx.lineTo(-5.5, 6);
+    ctx.lineTo(-2.5, 0);
+    ctx.lineTo(-5.5, -6);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();

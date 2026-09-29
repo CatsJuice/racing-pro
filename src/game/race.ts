@@ -21,6 +21,7 @@ import { FallingLeaves, SkidMarks, Smoke } from './effects';
 import { Hud } from './hud';
 import { Input } from './input';
 import { TouchControls } from './touchControls';
+import { icon, plain } from '../ui/icons';
 import { enterLandscape, exitLandscape, isTouch } from '../ui/device';
 
 const CAMERA_KEYS = ['race.camChase', 'race.camFar', 'race.camHood', 'race.camHeli'] as const;
@@ -760,9 +761,9 @@ export class RaceScreen implements Screen {
           h('h2', null, t('pause.title')),
           timeControls(this.env),
           h('div', { class: 'col' },
-            h('button', { class: 'btn primary', onclick: () => this.togglePause() }, t('pause.resume')),
-            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.resetToTrack(); } }, t('pause.reset')),
-            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.placeOnGrid(); } }, t('pause.grid')),
+            h('button', { class: 'btn primary', onclick: () => this.togglePause() }, icon('play', 14), t('pause.resume')),
+            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.resetToTrack(); } }, icon('reset', 15), t('pause.reset')),
+            h('button', { class: 'btn', onclick: () => { this.togglePause(); this.placeOnGrid(); } }, icon('flag', 15), t('pause.grid')),
             h('div', { class: 'seg assist-seg' }, ASSIST_LEVELS.map((l) => h('button', {
               class: `seg-btn ${l === this.assistLevel ? 'on' : ''}`,
               onclick: (e: Event) => {
@@ -772,10 +773,10 @@ export class RaceScreen implements Screen {
               },
             }, t('pause.assist', { level: t(`assist.${l}`) })))),
             this.touch ? this.steerPicker(this.touch) : null,
-            h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, t('pause.board')),
-            this.official ? h('button', { class: 'btn', onclick: () => { this.togglePause(); this.challengeWorldRecord(); } }, t('pause.challengeWr')) : null,
-            this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id, undefined, this.ghostLap!.online) }, t('pause.replayGhost')) : null,
-            h('button', { class: 'btn ghost', onclick: () => toMenu() }, t('pause.quit')),
+            h('button', { class: 'btn', onclick: () => toLeaderboard(this.trackData.id) }, icon('trophy', 15), t('pause.board')),
+            this.official ? h('button', { class: 'btn', onclick: () => { this.togglePause(); this.challengeWorldRecord(); } }, icon('globe', 15), plain(t('pause.challengeWr'))) : null,
+            this.ghostLap ? h('button', { class: 'btn', onclick: () => toReplay(this.ghostLap!.id, undefined, this.ghostLap!.online) }, icon('ghost', 15), t('pause.replayGhost')) : null,
+            h('button', { class: 'btn ghost', onclick: () => toMenu() }, icon('back', 15), t('pause.quit')),
           ),
           laps.length ? h('div', { class: 'session' },
             h('h3', null, t('pause.session')),

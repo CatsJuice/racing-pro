@@ -3,6 +3,7 @@ import { getPrefs, setPrefs } from '../core/storage';
 import { hourLabel, TIME_PRESETS, type Environment } from '../render/environment';
 import { getStage } from '../render/toon';
 import { h } from './dom';
+import { iconSvg } from './icons';
 
 const FLOWS: { key: 'time.flowOff' | 'time.flowSlow' | 'time.flowFast'; v: number }[] = [
   { key: 'time.flowOff', v: 0 },
@@ -24,7 +25,7 @@ export function timeControls(env?: Environment): HTMLElement {
     hour = ((v % 24) + 24) % 24;
     slider.value = String(hour);
     label.textContent = hourLabel(hour);
-    icon.textContent = hour >= 6 && hour < 18.5 ? (hour < 7.5 || hour > 17 ? '🌅' : '☀️') : '🌙';
+    icon.innerHTML = iconSvg(hour >= 6 && hour < 18.5 ? 'sun' : 'moon', 16);
     env?.setHour(hour);
     setPrefs({ hour });
   };
@@ -54,7 +55,7 @@ export function timeControls(env?: Environment): HTMLElement {
     requestAnimationFrame(tick);
   }
   return h('div', { class: 'time-controls' },
-    h('div', { class: 'row between' }, h('span', null, icon, ' ', t('time.title')), label),
+    h('div', { class: 'row between' }, h('span', null, icon, t('time.title')), label),
     slider,
     presets,
     h('div', { class: 'row between' }, h('span', { class: 'dim small' }, t('time.flow')), flow),

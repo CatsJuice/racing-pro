@@ -13,12 +13,25 @@ class App {
   private time = 0;
 
   async go(screen: Screen) {
+    const hadScreen = !!this.current;
     if (this.current) this.current.unmount();
     clear(this.root);
     this.root.className = '';
     this.current = screen;
+    // a short veil hides the frame where the old 3D scene is still on the canvas
+    if (hadScreen) {
+      const veil = document.createElement('div');
+      veil.className = 'fade-veil';
+      document.body.append(veil);
+      setTimeout(() => veil.remove(), 500);
+    }
     await screen.mount(this.root);
+    this.root.classList.add('ui-enter');
+    clearTimeout(this.enterTimer);
+    this.enterTimer = window.setTimeout(() => this.root.classList.remove('ui-enter'), 700);
   }
+
+  private enterTimer = 0;
 
   start() {
     const loop = (now: number) => {

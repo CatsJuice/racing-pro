@@ -1,6 +1,7 @@
 import { t } from '../i18n';
 import { h, toast } from '../ui/dom';
 import { screenAngle } from '../ui/device';
+import { icon } from '../ui/icons';
 import type { Action, Input } from './input';
 
 export type SteerMode = 'buttons' | 'tilt';
@@ -39,12 +40,12 @@ export class TouchControls {
   private mode: SteerMode = 'buttons';
 
   constructor(private input: Input, opts: { manualGears: boolean; mode?: SteerMode; onPause: () => void }) {
-    const hold = (cls: string, label: string, a: Action) => {
+    const hold = (cls: string, label: string | Node, a: Action) => {
       const b = h('div', { class: `tc-btn ${cls}` }, label);
       bindHold(b, (on) => input.setHeld(a, on));
       return b;
     };
-    const tap = (cls: string, label: string, fn: () => void) => {
+    const tap = (cls: string, label: string | Node, fn: () => void) => {
       const b = h('div', { class: `tc-btn ${cls}` }, label);
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.classList.add('on'); fn(); });
       const off = () => b.classList.remove('on');
@@ -55,8 +56,8 @@ export class TouchControls {
     };
 
     // steering pad: one element so a thumb can slide from left to right without lifting
-    const left = h('div', { class: 'tc-half' }, '◀');
-    const right = h('div', { class: 'tc-half' }, '▶');
+    const left = h('div', { class: 'tc-half' }, icon('back', 34));
+    const right = h('div', { class: 'tc-half' }, icon('chevron', 34));
     this.steerPad = h('div', { class: 'tc-steer' }, left, right);
     const sides = new Map<number, -1 | 1>();
     const syncSteer = () => {
@@ -88,7 +89,7 @@ export class TouchControls {
     this.steerPad.addEventListener('lostpointercapture', release);
 
     this.tiltDot = h('div', { class: 'tc-tilt-dot' });
-    this.tiltEl = h('div', { class: 'tc-tilt' }, h('div', { class: 'tc-tilt-track' }, this.tiltDot), h('small', null, `📱 ${t('touch.tilt')}`));
+    this.tiltEl = h('div', { class: 'tc-tilt' }, h('div', { class: 'tc-tilt-track' }, this.tiltDot), h('small', null, t('touch.tilt')));
 
     const gears = opts.manualGears
       ? h('div', { class: 'tc-gears' }, tap('small', '▲', () => input.press('shiftUp')), tap('small', '▼', () => input.press('shiftDown')))
@@ -96,14 +97,14 @@ export class TouchControls {
 
     this.el = h('div', { class: 'touch-controls' },
       h('div', { class: 'tc-top' },
-        tap('round', '⏸', opts.onPause),
-        tap('round', '🎥', () => input.press('camera')),
-        tap('round', '👻', () => input.press('ghost')),
-        tap('round', '↺', () => input.press('reset')),
+        tap('round', icon('pause', 16), opts.onPause),
+        tap('round', icon('camera', 18), () => input.press('camera')),
+        tap('round', icon('ghost', 18), () => input.press('ghost')),
+        tap('round', icon('reset', 18), () => input.press('reset')),
       ),
       h('div', { class: 'tc-left' }, this.steerPad, this.tiltEl),
       h('div', { class: 'tc-right' },
-        h('div', { class: 'tc-col' }, hold('tc-rewind', '⏪', 'rewind'), hold('tc-hand', '🅿', 'hand')),
+        h('div', { class: 'tc-col' }, hold('tc-rewind', icon('rewind', 22), 'rewind'), hold('tc-hand', 'P', 'hand')),
         gears,
         hold('tc-pedal tc-brake', '', 'down'),
         hold('tc-pedal tc-gas', '', 'up'),

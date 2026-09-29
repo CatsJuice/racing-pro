@@ -5,6 +5,7 @@ import { toLeaderboard, toMenu, toRace, toTrackEditor } from '../nav';
 import { trackThumb } from '../track/draw2d';
 import { TrackGeometry, type TrackData } from '../track/track';
 import { confirmDialog, h, toast } from './dom';
+import { icon, plain } from './icons';
 
 export class TrackListScreen implements Screen {
   private grid!: HTMLElement;
@@ -14,7 +15,7 @@ export class TrackListScreen implements Screen {
     this.grid = h('div', { class: 'track-grid large' });
     root.append(
       h('div', { class: 'screen-head' },
-        h('button', { class: 'btn ghost', onclick: () => toMenu() }, t('common.mainMenu')),
+        h('button', { class: 'btn ghost', onclick: () => toMenu() }, icon('back', 16), plain(t('common.mainMenu'))),
         h('h1', null, t('tracks.title')),
         h('div', { class: 'dim' }, t('tracks.subtitle')),
       ),
@@ -27,7 +28,7 @@ export class TrackListScreen implements Screen {
     this.grid.innerHTML = '';
     this.grid.append(
       h('div', { class: 'track-card new', onclick: () => toTrackEditor() },
-        h('div', { class: 'plus' }, '＋'),
+        h('div', { class: 'plus' }, icon('plus', 28)),
         h('b', null, t('tracks.new')),
         h('small', { class: 'dim' }, t('tracks.newSub')),
       ),
@@ -42,13 +43,13 @@ export class TrackListScreen implements Screen {
           h('div', { class: 'tc-body' },
             h('div', { class: 'row between' }, h('b', null, trackName(tr)), tr.builtin ? h('span', { class: 'official-tag' }, t('tracks.officialTag')) : h('span', { class: 'tag' }, t('tracks.localTag'))),
             h('small', { class: 'dim' }, t('tracks.meta', { km: (geo.length / 1000).toFixed(2), w: tr.width, n: tr.points.length })),
-            h('small', null, '🏆 ', best),
+            h('small', null, icon('trophy', 13), best),
             h('div', { class: 'row wrap tc-actions' },
-              h('button', { class: 'btn small', onclick: () => this.edit(tr) }, tr.builtin ? t('tracks.copyEdit') : t('common.edit')),
-              !tr.builtin ? h('button', { class: 'btn small ghost', onclick: () => this.copy(tr) }, t('common.copy')) : null,
-              h('button', { class: 'btn small ghost', onclick: () => toLeaderboard(tr.id) }, t('tracks.board')),
-              h('button', { class: 'btn small go', onclick: () => this.drive(tr) }, t('tracks.drive')),
-              !tr.builtin ? h('button', { class: 'btn small danger', onclick: () => this.remove(tr) }, t('common.delete')) : null,
+              h('button', { class: 'btn small go', onclick: () => this.drive(tr) }, icon('play', 12), plain(t('tracks.drive'))),
+              h('button', { class: 'btn small', onclick: () => this.edit(tr) }, icon('pencil', 13), tr.builtin ? t('tracks.copyEdit') : t('common.edit')),
+              h('button', { class: 'btn small ghost', title: t('tracks.board'), onclick: () => toLeaderboard(tr.id) }, icon('trophy', 13)),
+              !tr.builtin ? h('button', { class: 'btn small ghost', title: t('common.copy'), onclick: () => this.copy(tr) }, icon('copy', 13)) : null,
+              !tr.builtin ? h('button', { class: 'btn small ghost', title: t('common.delete'), onclick: () => this.remove(tr) }, icon('trash', 13)) : null,
             ),
           ),
         ),

@@ -105,8 +105,57 @@ export function drawTrack(ctx: CanvasRenderingContext2D, data: TrackData, view: 
   ctx.restore();
 }
 
+/**
+ * Broadcast-style circuit map: a fixed-width bright line with a dark casing and a warm glow,
+ * plus a checkered start marker. Independent of the real road width so small maps stay crisp.
+ */
+export function drawCircuit(ctx: CanvasRenderingContext2D, data: TrackData, view: View2D, lineW = 3, glow = true) {
+  if (data.points.length < 3) return;
+  const line = splinePolyline(data.points, 10);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  line.forEach((p, i) => {
+    const [x, y] = view.toScreen(p.x, p.z);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  if (glow) {
+    ctx.shadowColor = 'rgba(255, 190, 40, 0.65)';
+    ctx.shadowBlur = lineW * 4;
+    ctx.strokeStyle = 'rgba(255, 200, 70, 0.3)';
+    ctx.lineWidth = lineW * 2.6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  ctx.strokeStyle = 'rgba(6, 10, 26, 0.9)';
+  ctx.lineWidth = lineW * 2;
+  ctx.stroke();
+  ctx.strokeStyle = '#f5f7ff';
+  ctx.lineWidth = lineW;
+  ctx.stroke();
+  // start marker: a short checkered bar across the line
+  const g = new TrackGeometry(data);
+  const c = g.samples[0];
+  const [sx, sy] = view.toScreen(c.x, c.z);
+  ctx.translate(sx, sy);
+  ctx.rotate(Math.atan2(c.nz, c.nx));
+  const L = lineW * 2.6, s = Math.max(1.5, lineW * 0.55);
+  ctx.fillStyle = '#0a0f22';
+  ctx.fillRect(-L - 1, -s - 1, L * 2 + 2, s * 2 + 2);
+  for (let i = 0, x = -L; x < L - 0.01; i++, x += s) {
+    ctx.fillStyle = i % 2 ? '#0a0f22' : '#ffffff';
+    ctx.fillRect(x, -s, s, s);
+    ctx.fillStyle = i % 2 ? '#ffffff' : '#0a0f22';
+    ctx.fillRect(x, 0, s, s);
+  }
+  ctx.restore();
+}
+
 /** Renders a thumbnail into a new canvas. */
-export function trackThumb(data: TrackData, w = 220, h = 140, bg = '#8fd765'): HTMLCanvasElement {
+export function trackThumb(data: TrackData, w = 220, h = 140): HTMLCanvasElement {
   const cv = document.createElement('canvas');
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = w * dpr;
@@ -115,11 +164,23 @@ export function trackThumb(data: TrackData, w = 220, h = 140, bg = '#8fd765'): H
   cv.style.height = h + 'px';
   const ctx = cv.getContext('2d')!;
   ctx.scale(dpr, dpr);
+  const bg = ctx.createLinearGradient(0, 0, w * 0.4, h);
+  bg.addColorStop(0, '#1d2a5c');
+  bg.addColorStop(1, '#0e1430');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
+  // faint map grid
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+  const step = w > 120 ? 12 : 8;
+  for (let x = step / 2; x < w; x += step) for (let y = step / 2; y < h; y += step) ctx.fillRect(x, y, 1, 1);
+  const glow = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, Math.max(w, h) * 0.6);
+  glow.addColorStop(0, 'rgba(90, 130, 255, 0.22)');
+  glow.addColorStop(1, 'rgba(90, 130, 255, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
   if (data.points.length >= 3) {
-    const view = fitView(splinePolyline(data.points, 8), w, h, 14);
-    drawTrack(ctx, data, view, { minWidthPx: 4, arrows: false });
+    const view = fitView(splinePolyline(data.points, 8), w, h, Math.max(10, Math.min(w, h) * 0.13));
+    drawCircuit(ctx, data, view, w > 150 ? 3 : w > 100 ? 2.3 : 1.6);
   }
   return cv;
 }
