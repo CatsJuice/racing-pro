@@ -2,13 +2,19 @@
 
 卡通风格的 3D 赛车模拟器（Three.js + TypeScript + Vite）。画一条赛道、调一台赛车、刷一个圈速。
 
+在线地址：https://racing-pro.z1298554944.workers.dev
+
 ```bash
 pnpm install
-pnpm dev          # http://localhost:5173
-pnpm build
-pnpm models       # 用 Blender 重新生成 public/models/*.glb
-pnpm check:physics  # 物理/调校参数的无头测试
+pnpm db:migrate:local   # 初始化本地 D1（全球圈速榜）
+pnpm dev                # http://localhost:5173，前端 + Worker API 一起跑
+pnpm deploy             # 构建并部署到 Cloudflare Workers
+pnpm db:migrate:remote  # 线上数据库迁移（新增 migrations 后执行）
+pnpm models             # 用 Blender 重新生成 public/models/*.glb
+pnpm check:physics      # 物理/调校参数的无头测试
 ```
+
+托管在 Cloudflare Workers（静态资源 + `worker/index.ts` API），官方赛道的全球圈速榜与回放存储在 D1。
 
 ## 功能
 

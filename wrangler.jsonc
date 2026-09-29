@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "racing-pro",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "bb0d1f39-e485-4a9e-bf14-60c1f06fa659",
       "migrations_dir": "migrations"
     }
   ],
